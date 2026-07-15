@@ -7,7 +7,7 @@ import { FiSearch } from 'react-icons/fi';
 const Navbar = () => {
     return (
         <div className="bg-transparent w-[90%] mx-auto">
-            <div className="flex justify-between p-4 rounded-l-3xl rounded-r-3xl">
+            <div className="flex justify-between py-4 rounded-l-3xl rounded-r-3xl">
                 <div className="">
                     <img src="/src/assets/Unofficial_JavaScript_logo_2.svg.png" alt="" className="h-13 w-full object-contain" />
                 </div>
