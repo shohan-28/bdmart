@@ -10,12 +10,12 @@ const ProductUi = () => {
         dispatch(fetchProduct());
     }, [dispatch]);
     return (
-        <div className='py-10'>
-            <div className="grid grid-cols-4 gap-5">
+        <div className='w-[90%] mx-auto py-10'>
+            <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-5">
                 {ProductData.map((product) => (
                     <div
                         key={product.id}
-                        className="border rounded-lg p-4 shadow"
+                        className="border rounded-lg p-4 shadow relative"
                     >
                         <img
                             src={product.image}
@@ -27,11 +27,20 @@ const ProductUi = () => {
 
                         <p className="text-green-600">${product.price}</p>
 
-                        <p>{product.category}</p>
+                        <div className='flex justify-between items-center'>
+                            <p>{product.category}</p>
+                            <button className='bg-black hover:bg-gray-600 cursor-pointer text-white p-2 rounded-lg flex items-center'>Order Now</button>
+                        </div>
 
                         {product.isNew && (
-                            <span className="bg-red-500 text-white px-2 py-1 rounded text-sm">
+                            <span className="bg-green-500 text-white px-2 py-1 rounded text-sm flex absolute top-2 right-2">
                                 New
+                            </span>
+                        )}
+
+                        {product.discount && (
+                            <span className="bg-red-500 text-white px-2 py-1 rounded text-sm flex absolute top-2 left-2">
+                                {product.discount}% Off
                             </span>
                         )}
                     </div>
