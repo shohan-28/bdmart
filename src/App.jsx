@@ -12,16 +12,16 @@ function App() {
   return (
     <>
       <div className=''>
-        <Navbar></Navbar>
+        {/* <Navbar></Navbar>
         <div className='sticky top-0 z-50'>
-        <NavbarLink></NavbarLink>
-        </div>
+        <NavbarLink></NavbarLink> */}
+        {/* </div> */}
         
-        <NavNews></NavNews>
+        {/* <NavNews></NavNews> */}
         <ProductUi></ProductUi>
         <ProductUi></ProductUi>
         <ProductUi></ProductUi>
-        <Footer></Footer>
+        {/* <Footer></Footer> */}
       </div>
     </>
   )

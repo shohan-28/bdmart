@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProduct } from '../Feature/ProductSlice';
+import { Link } from 'react-router-dom';
 
 const ProductUi = () => {
     const ProductData = useSelector((state) => state.product.product);
@@ -17,11 +18,13 @@ const ProductUi = () => {
                         key={product.id}
                         className="border rounded-lg p-4 shadow relative"
                     >
+                        <Link to= {`/ProductDetails/${product.id}`}>
                         <img
                             src={product.image}
                             alt={product.name}
                             className="w-full h-48 object-cover"
                         />
+                        </Link>
 
                         <h2 className="font-bold mt-3">{product.name}</h2>
 
