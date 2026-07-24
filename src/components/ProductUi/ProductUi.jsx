@@ -1,56 +1,100 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchProduct } from '../Feature/ProductSlice';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProduct } from "../Feature/ProductSlice";
+import { Link } from "react-router-dom";
 
 const ProductUi = () => {
-    const ProductData = useSelector((state) => state.product.product);
-    const dispatch = useDispatch();
+  const ProductData = useSelector((state) => state.product.product);
+  const dispatch = useDispatch();
 
-    useEffect(() => {
-        dispatch(fetchProduct());
-    }, [dispatch]);
-    return (
-        <div className='w-[90%] mx-auto py-10'>
-            <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-5">
-                {ProductData.map((product) => (
-                    <div
-                        key={product.id}
-                        className="border rounded-lg p-4 shadow relative"
-                    >
-                        <Link to= {`/ProductDetails/${product.id}`}>
-                        <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-48 object-cover"
-                        />
-                        </Link>
+  useEffect(() => {
+    dispatch(fetchProduct());
+  }, [dispatch]);
+  return (
+    <div className="w-[90%] mx-auto py-10 md:py-16">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        {ProductData.map((product) => (
+          <div
+            key={product.id}
+            className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 relative"
+          >
+            {/* Product Image */}
+            <div className="relative overflow-hidden bg-gray-100">
+              <Link to={`/ProductDetails/${product.id}`}>
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+              </Link>
 
-                        <h2 className="font-bold mt-3">{product.name}</h2>
+              {/* Image Overlay */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-500 pointer-events-none"></div>
 
-                        <p className="text-green-600">${product.price}</p>
+              {/* New Badge */}
+              {product.isNew && (
+                <span className="absolute top-3 left-3 bg-green-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-md">
+                  New
+                </span>
+              )}
 
-                        <div className='flex justify-between items-center'>
-                            <p>{product.category}</p>
-                            <button className='bg-black hover:bg-gray-600 cursor-pointer text-white p-2 rounded-lg flex items-center'>Order Now</button>
-                        </div>
+              {/* Discount Badge */}
+              {product.discount && (
+                <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-md">
+                  -{product.discount}%
+                </span>
+              )}
 
-                        {product.isNew && (
-                            <span className="bg-green-500 text-white px-2 py-1 rounded text-sm flex absolute top-2 right-2">
-                                New
-                            </span>
-                        )}
-
-                        {product.discount && (
-                            <span className="bg-red-500 text-white px-2 py-1 rounded text-sm flex absolute top-2 left-2">
-                                {product.discount}% Off
-                            </span>
-                        )}
-                    </div>
-                ))}
+              {/* Wishlist Button */}
+              <button className="absolute bottom-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-700 hover:bg-red-500 hover:text-white transition-all duration-300 cursor-pointer shadow-md">
+                ♡
+              </button>
             </div>
-        </div>
-    );
+
+            {/* Product Content */}
+            <div className="p-5">
+              {/* Category */}
+              <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
+                {product.category}
+              </p>
+
+              {/* Product Name */}
+              <Link to={`/ProductDetails/${product.id}`}>
+                <h2 className="font-bold text-gray-800 text-lg line-clamp-1 group-hover:text-amber-600 transition-colors duration-300">
+                  {product.name}
+                </h2>
+              </Link>
+
+              {/* Rating */}
+              <div className="flex items-center gap-1 mt-2">
+                <div className="flex text-amber-400 text-sm">★★★★★</div>
+                <span className="text-xs text-gray-400">(4.8)</span>
+              </div>
+
+              {/* Price + Order */}
+              <div className="flex justify-between items-center mt-5">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${product.price}
+                  </p>
+
+                  {product.oldPrice && (
+                    <p className="text-sm text-gray-400 line-through">
+                      ${product.oldPrice}
+                    </p>
+                  )}
+                </div>
+
+                <button className="bg-black hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 hover:shadow-lg">
+                  Order Now
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 export default ProductUi;
