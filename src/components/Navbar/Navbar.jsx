@@ -1,6 +1,7 @@
 import React from "react";
 import { LuShoppingCart } from "../../../node_modules/react-icons/lu";
 import { FiSearch } from "react-icons/fi";
+import Search from "../Search/Search";
 
 const Navbar = () => {
   return (
@@ -14,7 +15,7 @@ const Navbar = () => {
           />
         </div>
         <div className="flex gap-10">
-          <div className="relative  sm:w-70 md:w-96 lg:w-[500px] xl:w-[600px] w-65 ">
+          {/* <div className="relative  sm:w-70 md:w-96 lg:w-[500px] xl:w-[600px] w-65 ">
             <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
 
             <input
@@ -26,7 +27,9 @@ const Navbar = () => {
             <button className="absolute right-1 lg:right-1.5 top-1/2 -translate-y-1/2 h-9 flex items-center p-2 lg:p-5 rounded-lg bg-amber-400 text-[12px] lg:text-[15px] text-white font-medium hover:bg-violet-700 transition cursor-pointer">
               Search
             </button>
-          </div>
+          </div> */}
+
+          <Search></Search>
 
           <div className="bg-amber-500 rounded-t-2xl flex justify-end">
             <button className="relative bg-amber-200 rounded-t-2xl text-xl lg:text-3xl p-2 cursor-pointer">

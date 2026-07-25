@@ -126,7 +126,7 @@ const ProductDetails = () => {
 
   return (
 
-    <section className="min-h-screen bg-gray-50 py-10 md:py-16">
+    <section className="min-h-screen py-10 md:py-16 bg-transparent">
 
       <div className="mx-auto w-[90%] ">
 

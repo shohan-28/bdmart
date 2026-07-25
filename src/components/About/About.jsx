@@ -11,7 +11,7 @@ import {
 
 const About = () => {
   return (
-    <section className="min-h-screen bg-white py-16 md:py-24">
+    <section className="min-h-screen py-16 md:py-24 bg-[radial-gradient(circle_at_top_left,_#fef3c7,_#ffffff_45%,_#fffbeb)]">
       <div className="w-[92%] max-w-7xl mx-auto">
 
         {/* Hero Section */}
