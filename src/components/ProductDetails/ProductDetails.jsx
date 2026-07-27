@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, Link } from "react-router-dom";
+import { addToCart } from "../Feature/CartSlice"
 
 import {
   FiHeart,
@@ -122,6 +123,8 @@ const ProductDetails = () => {
       </div>
     );
   }
+
+  
 
 
   return (
@@ -475,8 +478,9 @@ const ProductDetails = () => {
               {/* Add To Cart */}
 
               <button
+                onClick={()=> dispatch(addToCart({...product, quantity}))}
                 disabled={!product.stock}
-                className="flex h-14 flex-1 items-center justify-center gap-3 rounded-xl bg-black px-6 font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-400"
+                className="flex h-14 flex-1 items-center justify-center gap-3 rounded-xl bg-black px-6 font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-400 cursor-pointer"
               >
 
                 <FiShoppingBag className="text-xl" />
@@ -491,7 +495,7 @@ const ProductDetails = () => {
 
             {/* Buy Now */}
 
-            <button className="mt-4 h-14 w-full rounded-xl border-2 border-black bg-white font-semibold text-black transition hover:bg-black hover:text-white">
+            <button className="mt-4 h-14 w-full rounded-xl border-2 border-black bg-white font-semibold text-black transition hover:bg-black hover:text-white cursor-pointer">
 
               Buy Now
 

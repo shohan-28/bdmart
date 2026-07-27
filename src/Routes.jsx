@@ -5,6 +5,7 @@ import ProductDetails from "./components/ProductDetails/ProductDetails";
 import About from "./components/About/About";
 import Contact from "./components/Contact/Contact";
 import Services from "./components/Services/Services";
+import CartPage from "./components/CartPage/CartPage";
 
 const router = createBrowserRouter([
     {
@@ -41,9 +42,12 @@ const router = createBrowserRouter([
                 {
                 path: "/Services",
             element: <Services></Services>
-                }
+                },
 
-                
+                {
+                path: "/CartPage",
+            element: <CartPage></CartPage>
+                }
 
 
 

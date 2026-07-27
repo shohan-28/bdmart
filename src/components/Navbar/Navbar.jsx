@@ -2,8 +2,22 @@ import React from "react";
 import { LuShoppingCart } from "../../../node_modules/react-icons/lu";
 import { FiSearch } from "react-icons/fi";
 import Search from "../Search/Search";
+import { useSelector } from "react-redux";
+import { Link } from "react-router-dom";
+import CartPage from './../CartPage/CartPage';
 
 const Navbar = () => {
+  const ProductData = useSelector ((state)=> state.product.product);
+  
+  const cartItems = useSelector(
+    (state) => state.cart.cart
+  );
+
+  const cartCount = cartItems.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+
   return (
     <div className="bg-transparent w-[90%] mx-auto">
       <div className="flex justify-between py-4 rounded-l-3xl rounded-r-3xl">
@@ -32,14 +46,18 @@ const Navbar = () => {
           <Search></Search>
 
           <div className="bg-amber-500 rounded-t-2xl flex justify-end">
-            <button className="relative bg-amber-200 rounded-t-2xl text-xl lg:text-3xl p-2 cursor-pointer">
+            <Link to="/CartPage">
+            <button
+            
+            className="relative bg-amber-200 rounded-t-2xl text-xl lg:text-3xl p-2 cursor-pointer">
               <LuShoppingCart />
 
               {/* Cart Quantity */}
               <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex justify-center items-center text-[10px] font-bold">
-                0
+                {cartCount}
               </span>
             </button>
+            </Link>
           </div>
         </div>
       </div>
