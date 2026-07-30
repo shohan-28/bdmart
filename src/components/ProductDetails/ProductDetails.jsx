@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { addToCart } from "../Feature/CartSlice"
 
 import {
@@ -15,6 +15,7 @@ import {
 import { IoStar } from "react-icons/io5";
 
 import { fetchProduct } from "../Feature/ProductSlice";
+import Checkout from './../CheckOut/CheckOut';
 
 
 const ProductDetails = () => {
@@ -124,6 +125,7 @@ const ProductDetails = () => {
     );
   }
 
+  const navigate = useNavigate();
   
 
 
@@ -495,7 +497,13 @@ const ProductDetails = () => {
 
             {/* Buy Now */}
 
-            <button className="mt-4 h-14 w-full rounded-xl border-2 border-black bg-white font-semibold text-black transition hover:bg-black hover:text-white cursor-pointer">
+            <button
+            onClick={()=>
+              navigate("/Checkout", {
+                state: {product, quantity,}
+              })
+            }
+            className="mt-4 h-14 w-full rounded-xl border-2 border-black bg-white font-semibold text-black transition hover:bg-black hover:text-white cursor-pointer">
 
               Buy Now
 
