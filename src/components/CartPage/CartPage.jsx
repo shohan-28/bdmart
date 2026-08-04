@@ -1,11 +1,23 @@
-import React from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { increaseQuantity,decreaseQuantity,removeCart } from "../Feature/CartSlice";
+import {
+  increaseQuantity,
+  decreaseQuantity,
+  removeCart,
+} from "../Feature/CartSlice";
+import { useNavigate, useParams } from "react-router-dom";
+import Checkout from "./../CheckOut/CheckOut";
 
 const CartPage = () => {
+  const ProductData = useSelector((state) => state.product.product);
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.cart);
-
+  const navigate = useNavigate();
+  const { productId } = useParams();
+  const product = ProductData.find(
+    (item) => Number(item.id) === Number(productId),
+  );
+  const [quantity, setQuantity] = useState(1);
   return (
     <div className="w-[90%] mx-auto py-10">
       <h1 className="text-3xl font-bold mb-8">My Cart</h1>
@@ -39,13 +51,10 @@ const CartPage = () => {
                 <p className="font-bold mt-2">${item.price}</p>
 
                 {/* Quantity */}
-              <div className=" ">
-                <p className="font-semibold">Quantity: {item.quantity}</p>
+                <div className=" ">
+                  <p className="font-semibold">Quantity: {item.quantity}</p>
+                </div>
               </div>
-
-              </div>
-
-              
 
               <div className="flex items-center gap-3">
                 <button
@@ -73,6 +82,21 @@ const CartPage = () => {
               </button>
             </div>
           ))}
+
+          <div className="flex justify-between items-center text-center">
+            <button
+              onClick={() =>
+                navigate("/Checkout", {
+                  state: {
+                    cartItems,
+                  },
+                })
+              }
+              className="bg-amber-400 hover:bg-amber-500 text-black font-semibold text-lg px-6 py-3 rounded-xl transition cursor-pointer"
+            >
+              Go to Order Confirm Page
+            </button>
+          </div>
         </div>
       )}
     </div>

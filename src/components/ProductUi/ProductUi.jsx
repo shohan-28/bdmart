@@ -10,6 +10,10 @@ const ProductUi = () => {
   useEffect(() => {
     dispatch(fetchProduct());
   }, [dispatch]);
+
+  const handleOrderNow = (productId) =>{
+    
+  }
   return (
     <div className="w-[90%] mx-auto py-10 md:py-16">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
@@ -85,7 +89,9 @@ const ProductUi = () => {
                   )}
                 </div>
 
-                <button className="bg-black hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 hover:shadow-lg">
+                <button
+               
+                 className="bg-black hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 hover:shadow-lg">
                   Order Now
                 </button>
               </div>
