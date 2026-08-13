@@ -4,6 +4,7 @@ import NavbarLink from './components/Navbar/NavbarLink';
 import NavNews from './components/Navbar/NavNews';
 import Footer from './components/Footer/Footer';
 import { Outlet } from 'react-router-dom';
+import SideCart from './components/SideCart/SideCart';
 
 const Root = () => {
     return (
@@ -13,6 +14,9 @@ const Root = () => {
         <NavbarLink></NavbarLink> 
         </div>
             <Outlet></Outlet>
+        <div className='top-1/2 right-3 fixed z-70 '>
+            <SideCart></SideCart>
+        </div>
             <Footer></Footer>
         </div>
     );

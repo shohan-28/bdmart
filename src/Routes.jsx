@@ -7,6 +7,7 @@ import Contact from "./components/Contact/Contact";
 import Services from "./components/Services/Services";
 import CartPage from "./components/CartPage/CartPage";
 import Checkout from './components/CheckOut/CheckOut';
+import SideCart from './components/SideCart/SideCart';
 
 const router = createBrowserRouter([
     {
@@ -53,6 +54,11 @@ const router = createBrowserRouter([
                 {
                 path: "/Checkout",
             element: <Checkout></Checkout>
+                },
+
+                {
+                path: "/SideCart",
+            element: <SideCart></SideCart>
                 }
 
 

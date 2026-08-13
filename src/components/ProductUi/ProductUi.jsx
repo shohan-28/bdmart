@@ -1,11 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProduct } from "../Feature/ProductSlice";
 import { Link } from "react-router-dom";
+import { addToCart } from "../Feature/CartSlice"
 
 const ProductUi = () => {
   const ProductData = useSelector((state) => state.product.product);
   const dispatch = useDispatch();
+    const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     dispatch(fetchProduct());
@@ -90,9 +92,10 @@ const ProductUi = () => {
                 </div>
 
                 <button
-               
+                onClick={()=> dispatch(addToCart({...product, quantity}))}
+                disabled={!product.stock}
                  className="bg-black hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 hover:shadow-lg">
-                  Order Now
+                  Add To Cart
                 </button>
               </div>
             </div>

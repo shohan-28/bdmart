@@ -19,7 +19,8 @@ import Checkout from './../CheckOut/CheckOut';
 
 
 const ProductDetails = () => {
-
+  
+  const navigate = useNavigate();
   // URL থেকে productId নেওয়া
   // Example: /ProductDetails/1
   const { productId } = useParams();
@@ -125,7 +126,7 @@ const ProductDetails = () => {
     );
   }
 
-  const navigate = useNavigate();
+
   
 
 
