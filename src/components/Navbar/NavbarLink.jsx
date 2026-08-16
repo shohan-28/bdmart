@@ -7,12 +7,12 @@ import About from './../About/About';
 const NavbarLink = () => {
   return (
     <div className="w-[90%] mx-auto py-2">
-      <div className="flex justify-center lg:gap-20 md:gap-8  bg-gray-200/70 shadow-md p-1.5 rounded-l-3xl rounded-r-3xl font-bold text-black text-[9px] lg:text-[15px] md:text-lg  w-full z-50">
+      <div className="flex justify-center lg:gap-20 md:gap-8  bg-gray-200/70 shadow-md p-1.5 rounded-l-3xl rounded-r-3xl font-bold text-black text-[10px] lg:text-[15px] md:text-lg  w-full z-50">
         
         <NavLink
           to="/"
           className={({ isActive }) =>
-            `px-5 py-2.5 rounded-full font-semibold transition-all duration-300 ${
+            `px-2 py-2.5 rounded-full font-semibold transition-all duration-300 ${
               isActive
                 ? "bg-blue-600 text-white"
                 : "text-gray-600 hover:bg-blue-50 hover:text-blue-600"
