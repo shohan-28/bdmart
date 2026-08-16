@@ -6,8 +6,8 @@ import About from './../About/About';
 
 const NavbarLink = () => {
   return (
-    <div className="w-[90%] mx-auto py-2">
-      <div className="flex justify-center lg:gap-20 md:gap-8  bg-gray-200/70 shadow-md p-1.5 rounded-l-3xl rounded-r-3xl font-bold text-black text-[10px] lg:text-[15px] md:text-lg  w-full z-50">
+    <div className="w-[90%] mx-auto max-w-5x py-2">
+      <div className="flex justify-center gap-1 sm:gap-2 md:gap-4 lg:gap-15 bg-gray-200/70 shadow-md p-1.5 rounded-l-3xl rounded-r-3xl font-bold text-black text-[10px] lg:text-[15px] md:text-lg  w-full z-50">
         
         <NavLink
           to="/"

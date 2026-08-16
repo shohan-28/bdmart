@@ -22,7 +22,7 @@ const SideCart = () => {
                 <Link to="/CartPage">
                    <button
                             
-                            className="relative flex flex-col items-center justify-center bg-amber-200 rounded-l-2xl text-xl lg:text-4xl p-2 cursor-pointer">
+                            className="relative flex flex-col items-center justify-center bg-amber-200 rounded-l-2xl text-xl md:text-2xl lg:text-4xl p-2 cursor-pointer">
                               <LuShoppingCart />
                 
                               {/* Cart Quantity */}
