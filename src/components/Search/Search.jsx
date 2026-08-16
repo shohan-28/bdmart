@@ -22,7 +22,7 @@ const Search = () => {
   return (
     <div className="relative w-full max-w-md">
       {/* Search Input */}
-      <div className="flex items-center bg-white border border-gray-200 rounded-full px-4  py-2 shadow-sm">
+      <div className="flex items-center bg-white border border-gray-200 rounded-full px-2  py-2 shadow-sm">
         <FiSearch className="text-gray-500 text-3xl" />
 
         <input
@@ -30,7 +30,7 @@ const Search = () => {
           placeholder="Search products..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="w-full px-4 lg:px-15 outline-none bg-transparent text-gray-700"
+          className="w-full px-2 lg:px-15 outline-none bg-transparent text-gray-700"
         />
       </div>
 
