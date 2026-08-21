@@ -11,7 +11,7 @@ const NavbarLink = () => {
   ];
 
   return (
-    <div className="w-[94%] sm:w-[90%] max-w-5xl mx-auto py-2">
+    <div className="w-[94%] sm:w-[90%] lg:w-[95%] max-w- mx-auto py-2">
       <div className="flex items-center justify-center gap-1 sm:gap-2 md:gap-4 lg:gap-8 bg-gray-200/70 shadow-md p-1.5 rounded-full font-bold w-full">
 
         {navItems.map((item) => (
