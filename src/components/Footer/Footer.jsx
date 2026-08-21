@@ -18,7 +18,7 @@ const Footer = () => {
                     {/* Logo */}
                     <div>
                         <h2 className="text-3xl font-bold text-gray-900">
-                            BD<span className="text-amber-400">Mart</span>
+                            Sprien<span className="text-amber-400">gge</span>
                         </h2>
 
                         <p className="mt-4 text-gray-500 leading-7">
