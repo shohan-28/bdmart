@@ -1,40 +1,40 @@
-import { useLocation } from "react-router-dom";
-import { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import {
   FiUser,
   FiPhone,
   FiMapPin,
-  FiTruck,
+  FiFileText,
+  FiMinus,
+  FiPlus,
+  FiTrash2,
 } from "react-icons/fi";
-import { districtData } from "../DistrictData/DistrictData";
-import { useDispatch } from "react-redux";
-import { clearCart } from "../Feature/CartSlice";
+
+import { clearCart } from "../../redux/features/cart/cartSlice";
+import districtData from "../../data/DistrictData";
+
+const API_URL = "https://sprienge-backend.onrender.com/api";
 
 const Checkout = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { state } = useLocation();
 
-  if (!state) {
-    return (
-      <div className="text-center py-20">
-        <h2 className="text-2xl font-bold">No Product Found</h2>
-      </div>
-    );
-  }
+  const state = location.state || {};
 
-  const isBuyNow = !!state.product;
+  const isBuyNow = Boolean(state.product);
 
   const product = state.product || null;
-  const quantity = state.quantity || 1;
 
-  const cartItems = state.cartItems || [];
+  const buyNowQuantity = Math.max(
+    1,
+    Number(state.quantity) || 1
+  );
 
-  const subtotal = isBuyNow
-    ? product.price * quantity
-    : cartItems.reduce(
-        (total, item) => total + item.price * item.quantity,
-        0
-      );
+  const cartItems = Array.isArray(state.cartItems)
+    ? state.cartItems
+    : [];
 
   const [formData, setFormData] = useState({
     name: "",
@@ -45,379 +45,926 @@ const Checkout = () => {
     note: "",
   });
 
-  // Dhaka এর ভেতরে হলে ৳60, বাইরে হলে ৳100 — জেলা সিলেক্ট করার সাথে সাথে অটো সেট হবে
-  const isDhaka = formData.district.trim().includes("Dhaka");
-  const deliveryCharge = isDhaka ? 60 : 100;
+  const [loading, setLoading] = useState(false);
+
+  /*
+  ========================================
+  DISTRICT / THANA
+  ========================================
+  */
+
+  const selectedDistrict = districtData.find(
+    (item) =>
+      item.district === formData.district ||
+      item.name === formData.district
+  );
+
+  const thanaList =
+    selectedDistrict?.thanas ||
+    selectedDistrict?.thana ||
+    [];
+
+  /*
+  ========================================
+  NORMALIZE CART ITEM
+  ========================================
+  */
+
+  const normalizeItem = (item, quantityOverride = null) => {
+    const price = Number(item?.price);
+
+    const quantity = Math.max(
+      1,
+      Number(quantityOverride ?? item?.quantity) || 1
+    );
+
+    return {
+      productId:
+        item?.productId ??
+        item?.id ??
+        null,
+
+      productName:
+        item?.productName ??
+        item?.name ??
+        "",
+
+      productImage:
+        item?.productImage ??
+        item?.image ??
+        "",
+
+      price: Number.isFinite(price) ? price : 0,
+
+      quantity,
+
+      subtotal:
+        (Number.isFinite(price) ? price : 0) * quantity,
+    };
+  };
+
+  /*
+  ========================================
+  ORDER ITEMS
+  ========================================
+  */
+
+  const orderItems = useMemo(() => {
+    if (isBuyNow && product) {
+      return [
+        normalizeItem(
+          product,
+          buyNowQuantity
+        ),
+      ];
+    }
+
+    return cartItems.map((item) =>
+      normalizeItem(item)
+    );
+  }, [
+    isBuyNow,
+    product,
+    buyNowQuantity,
+    cartItems,
+  ]);
+
+  /*
+  ========================================
+  SUBTOTAL
+  ========================================
+  */
+
+  const subtotal = useMemo(() => {
+    return orderItems.reduce(
+      (total, item) =>
+        total + Number(item.subtotal || 0),
+      0
+    );
+  }, [orderItems]);
+
+  /*
+  ========================================
+  DELIVERY CHARGE
+  ========================================
+  */
+
+  const deliveryCharge = useMemo(() => {
+    if (!formData.district) {
+      return 0;
+    }
+
+    const district =
+      formData.district.toLowerCase();
+
+    return district.includes("dhaka")
+      ? 60
+      : 100;
+  }, [formData.district]);
+
+  /*
+  ========================================
+  TOTAL
+  ========================================
+  */
 
   const total = subtotal + deliveryCharge;
 
+  /*
+  ========================================
+  INPUT CHANGE
+  ========================================
+  */
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+
+    if (name === "district") {
+      setFormData((prev) => ({
+        ...prev,
+        district: value,
+        thana: "",
+      }));
+
+      return;
+    }
+
+    if (name === "phone") {
+      const phone = value
+        .replace(/\D/g, "")
+        .slice(0, 11);
+
+      setFormData((prev) => ({
+        ...prev,
+        phone,
+      }));
+
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
+  /*
+  ========================================
+  VALIDATE CART
+  ========================================
+  */
+
+  const validateItems = () => {
+    if (!orderItems.length) {
+      return "Your cart is empty.";
+    }
+
+    for (const item of orderItems) {
+      if (!item.productName) {
+        return "Product name is missing.";
+      }
+
+      if (
+        !Number.isFinite(Number(item.price)) ||
+        Number(item.price) < 0
+      ) {
+        return `Invalid price for ${item.productName}.`;
+      }
+
+      if (
+        !Number.isFinite(Number(item.quantity)) ||
+        Number(item.quantity) < 1
+      ) {
+        return `Invalid quantity for ${item.productName}.`;
+      }
+    }
+
+    return null;
+  };
+
+  /*
+  ========================================
+  PLACE ORDER
+  ========================================
+  */
+
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (formData.phone.length !== 11) {
-    alert("⚠️ অনুগ্রহ করে সঠিক ১১ ডিজিটের মোবাইল নাম্বার দিন");
-    return;
+    if (loading) return;
+
+    /*
+    CUSTOMER VALIDATION
+    */
+
+    const name = formData.name.trim();
+    const phone = formData.phone.trim();
+    const district = formData.district.trim();
+    const thana = formData.thana.trim();
+    const address = formData.address.trim();
+    const note = formData.note.trim();
+
+    if (!name) {
+      alert("Please enter your name.");
+      return;
+    }
+
+    if (!phone) {
+      alert("Please enter your phone number.");
+      return;
+    }
+
+    if (!/^01\d{9}$/.test(phone)) {
+      alert(
+        "Please enter a valid Bangladesh phone number.\nExample: 01712345678"
+      );
+      return;
+    }
+
+    if (!district) {
+      alert("Please select your district.");
+      return;
+    }
+
+    if (!thana) {
+      alert("Please select your thana.");
+      return;
+    }
+
+    if (!address) {
+      alert("Please enter your delivery address.");
+      return;
+    }
+
+    /*
+    ITEM VALIDATION
+    */
+
+    const itemError = validateItems();
+
+    if (itemError) {
+      alert(itemError);
+      return;
+    }
+
+    /*
+    NORMALIZE ITEMS AGAIN
+    */
+
+    const finalItems = orderItems.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      productImage: item.productImage,
+      price: Number(item.price),
+      quantity: Number(item.quantity),
+      subtotal:
+        Number(item.price) *
+        Number(item.quantity),
+    }));
+
+    /*
+    CALCULATE SUBTOTAL AGAIN
+    */
+
+    const finalSubtotal = finalItems.reduce(
+      (sum, item) => sum + item.subtotal,
+      0
+    );
+
+    /*
+    DELIVERY
+    */
+
+    const finalDeliveryCharge =
+      district.toLowerCase().includes("dhaka")
+        ? 60
+        : 100;
+
+    /*
+    TOTAL
+    */
+
+    const finalTotal =
+      finalSubtotal + finalDeliveryCharge;
+
+    /*
+    TOP LEVEL PRODUCT
+    */
+
+    const firstItem = finalItems[0];
+
+    const orderData = {
+      name,
+      phone,
+      district,
+      thana,
+      address,
+      note,
+
+      /*
+      TOP LEVEL PRODUCT INFO
+      */
+
+      productId: isBuyNow
+        ? firstItem.productId
+        : null,
+
+      productName: isBuyNow
+        ? firstItem.productName
+        : "",
+
+      productImage: isBuyNow
+        ? firstItem.productImage
+        : "",
+
+      price: isBuyNow
+        ? firstItem.price
+        : 0,
+
+      quantity: isBuyNow
+        ? firstItem.quantity
+        : 1,
+
+      /*
+      CART ITEMS
+      */
+
+      items: finalItems,
+
+      /*
+      MONEY
+      */
+
+      subtotal: finalSubtotal,
+
+      deliveryCharge:
+        finalDeliveryCharge,
+
+      total: finalTotal,
+
+      /*
+      ORDER INFO
+      */
+
+      source: "website",
+
+      orderSource: "website",
+    };
+
+    console.log(
+      "================================="
+    );
+
+    console.log(
+      "ORDER DATA:",
+      orderData
+    );
+
+    console.log(
+      "ORDER ITEMS:",
+      finalItems
+    );
+
+    console.log(
+      "SUBTOTAL:",
+      finalSubtotal
+    );
+
+    console.log(
+      "DELIVERY:",
+      finalDeliveryCharge
+    );
+
+    console.log(
+      "TOTAL:",
+      finalTotal
+    );
+
+    console.log(
+      "================================="
+    );
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/orders`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Accept:
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            orderData
+          ),
+        }
+      );
+
+      /*
+      READ RAW RESPONSE FIRST
+      */
+
+      const responseText =
+        await response.text();
+
+      console.log(
+        "HTTP STATUS:",
+        response.status
+      );
+
+      console.log(
+        "RAW RESPONSE:",
+        responseText
+      );
+
+      let data = {};
+
+      try {
+        data = responseText
+          ? JSON.parse(responseText)
+          : {};
+      } catch (jsonError) {
+        console.error(
+          "JSON PARSE ERROR:",
+          jsonError
+        );
+      }
+
+      /*
+      BACKEND ERROR
+      */
+
+      if (!response.ok) {
+        const backendMessage =
+          data?.message ||
+          data?.error ||
+          responseText ||
+          `HTTP ${response.status}`;
+
+        throw new Error(
+          backendMessage
+        );
+      }
+
+      /*
+      SUCCESS
+      */
+
+      console.log(
+        "ORDER CREATED:",
+        data
+      );
+
+      alert(
+        "Order placed successfully! 🎉"
+      );
+
+      /*
+      CLEAR CART
+      */
+
+      if (!isBuyNow) {
+        dispatch(clearCart());
+      }
+
+      /*
+      GO HOME
+      */
+
+      navigate("/");
+    } catch (error) {
+      console.error(
+        "ORDER ERROR:",
+        error
+      );
+
+      alert(
+        `Order failed!\n\n${
+          error?.message ||
+          "Please try again."
+        }`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /*
+  ========================================
+  NO PRODUCT / EMPTY CART
+  ========================================
+  */
+
+  if (!isBuyNow && cartItems.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-3">
+            Your cart is empty
+          </h2>
+
+          <button
+            onClick={() => navigate("/")}
+            className="px-5 py-3 rounded-lg bg-black text-white"
+          >
+            Continue Shopping
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  try {
-    const res = await fetch("https://sprienge-backend.onrender.com/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...formData,
-        items: isBuyNow ? [{ ...product, quantity }] : cartItems,
-        subtotal,
-        deliveryCharge,
-        total,
-      }),
-    });
-
-    console.log("STATUS:", res.status);
-console.log("RESPONSE:", data);
-
-    if (!res.ok) throw new Error("Order failed");
-
-    if (!isBuyNow) dispatch(clearCart());
-    alert("🎉 Order Placed Successfully");
-  } catch (err) {
-    alert("❌ Order failed, try again");
-  }
-};
+  /*
+  ========================================
+  UI
+  ========================================
+  */
 
   return (
-    <section className="min-h-screen py-14">
-      <div className="w-[92%] max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-12">
-          Secure Checkout
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-6xl mx-auto">
+
+        <h1 className="text-3xl font-bold mb-8">
+          Checkout
         </h1>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* ===========================
-              Shipping Information
-          =========================== */}
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        >
 
-          <form
-            onSubmit={handleSubmit}
-            className="lg:col-span-2 rounded-3xl bg-white/70 backdrop-blur-2xl border border-white/40 shadow-2xl p-8"
-          >
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-800">
-                Shipping Information
-              </h2>
+          {/* =================================
+              CUSTOMER INFORMATION
+          ================================= */}
 
-              <p className="text-gray-500 mt-2">
-                Please fill in your delivery information.
-              </p>
-            </div>
+          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm">
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Full Name */}
+            <h2 className="text-xl font-semibold mb-6">
+              Customer Information
+            </h2>
+
+            {/* NAME */}
+
+            <div className="mb-5">
+
+              <label className="block text-sm font-medium mb-2">
+                Full Name
+              </label>
+
               <div className="relative">
-                <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-400" />
+
+                <FiUser
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
 
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="Full Name"
-                  required
-                  className="w-full h-14 rounded-2xl border border-gray-200 bg-white pl-12 pr-4 outline-none transition-all duration-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                  placeholder="Enter your full name"
+                  className="w-full border rounded-xl pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-black"
                 />
+
               </div>
 
-              {/* Phone */}
+            </div>
+
+            {/* PHONE */}
+
+            <div className="mb-5">
+
+              <label className="block text-sm font-medium mb-2">
+                Phone Number
+              </label>
+
               <div className="relative">
-                <FiPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-xl text-gray-400" />
+
+                <FiPhone
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
 
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
-                  onChange={(e) => {
-                    const digitsOnly = e.target.value.replace(/\D/g, "");
-                    setFormData({ ...formData, phone: digitsOnly });
-                  }}
-                  placeholder="Phone Number"
-                  inputMode="numeric"
+                  onChange={handleChange}
+                  placeholder="01712345678"
                   maxLength={11}
-                  required
-                  className="w-full h-14 rounded-2xl border border-gray-200 bg-white pl-12 pr-4 outline-none transition-all duration-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                  className="w-full border rounded-xl pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-black"
                 />
+
               </div>
 
-              {/* District */}
-              <div>
-                <label className="text-sm font-semibold text-gray-600 mb-2 block">
-                  District
-                </label>
+            </div>
+
+            {/* DISTRICT */}
+
+            <div className="mb-5">
+
+              <label className="block text-sm font-medium mb-2">
+                District
+              </label>
+
+              <div className="relative">
+
+                <FiMapPin
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                />
 
                 <select
                   name="district"
                   value={formData.district}
-                  onChange={(e) => {
-                    setFormData({
-                      ...formData,
-                      district: e.target.value,
-                      thana: "",
-                    });
-                  }}
-                  required
-                  className="w-full h-14 rounded-2xl border border-gray-200 bg-white px-4 outline-none transition-all duration-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                  onChange={handleChange}
+                  className="w-full border rounded-xl pl-10 pr-4 py-3 bg-white outline-none focus:ring-2 focus:ring-black"
                 >
-                  <option value="">Select District</option>
 
-                  {Object.keys(districtData).map((district) => (
-                    <option key={district} value={district}>
-                      {district}
-                    </option>
-                  ))}
+                  <option value="">
+                    Select District
+                  </option>
+
+                  {districtData.map(
+                    (item, index) => (
+                      <option
+                        key={
+                          item.district ||
+                          item.name ||
+                          index
+                        }
+                        value={
+                          item.district ||
+                          item.name
+                        }
+                      >
+                        {item.district ||
+                          item.name}
+                      </option>
+                    )
+                  )}
+
                 </select>
+
               </div>
 
-              {/* Thana */}
-              <div>
-                <label className="text-sm font-semibold text-gray-600 mb-2 block">
-                  Thana / Upazila
-                </label>
+            </div>
+
+            {/* THANA */}
+
+            <div className="mb-5">
+
+              <label className="block text-sm font-medium mb-2">
+                Thana
+              </label>
+
+              <div className="relative">
+
+                <FiMapPin
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                />
 
                 <select
                   name="thana"
                   value={formData.thana}
                   onChange={handleChange}
-                  required
-                  className="w-full h-14 rounded-2xl border border-gray-200 bg-white px-4 outline-none transition-all duration-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                  disabled={!formData.district}
+                  className="w-full border rounded-xl pl-10 pr-4 py-3 bg-white outline-none focus:ring-2 focus:ring-black disabled:bg-gray-100"
                 >
-                  <option value="">Select Thana</option>
 
-                  {districtData[formData.district]?.map((thana) => (
-                    <option key={thana} value={thana}>
-                      {thana}
-                    </option>
-                  ))}
+                  <option value="">
+                    {formData.district
+                      ? "Select Thana"
+                      : "Select District First"}
+                  </option>
+
+                  {thanaList.map(
+                    (thana, index) => (
+                      <option
+                        key={`${thana}-${index}`}
+                        value={
+                          typeof thana ===
+                          "string"
+                            ? thana
+                            : thana.name
+                        }
+                      >
+                        {typeof thana ===
+                        "string"
+                          ? thana
+                          : thana.name}
+                      </option>
+                    )
+                  )}
+
                 </select>
+
               </div>
+
             </div>
 
-            {/* Address */}
-            <div className="relative mt-6">
-              <FiMapPin className="absolute left-4 top-6 text-xl text-gray-400" />
+            {/* ADDRESS */}
+
+            <div className="mb-5">
+
+              <label className="block text-sm font-medium mb-2">
+                Delivery Address
+              </label>
 
               <textarea
-                rows={5}
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                placeholder="House No, Road No, Village, Area..."
-                required
-                className="w-full rounded-2xl border border-gray-200 bg-white pl-12 pr-4 pt-5 outline-none transition-all duration-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
+                rows={4}
+                placeholder="House, Road, Area..."
+                className="w-full border rounded-xl px-4 py-3 outline-none resize-none focus:ring-2 focus:ring-black"
               />
+
             </div>
 
-            {/* Order Note */}
-            <textarea
-              rows={3}
-              name="note"
-              value={formData.note}
-              onChange={handleChange}
-              placeholder="Order Note (Optional)"
-              className="w-full mt-6 rounded-2xl border border-gray-200 bg-white p-5 outline-none transition-all duration-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
-            />
+            {/* NOTE */}
 
-            {/* Delivery Charge (auto based on district) */}
-            <div className="mt-10">
-              <h2 className="text-2xl font-bold flex items-center gap-3 mb-6">
-                <FiTruck />
-                Delivery Charge
-              </h2>
+            <div>
 
-              <div className="grid md:grid-cols-2 gap-5">
-                {/* Inside Dhaka */}
-                <div
-                  className={`rounded-2xl border-2 p-5 transition ${
-                    isDhaka
-                      ? "border-amber-500 bg-amber-50"
-                      : "border-gray-200 bg-white"
-                  }`}
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <h3 className="font-bold">ঢাকা শহরের ভিতরে</h3>
-                    <p className="mt-2 text-2xl font-bold text-amber-500">
-                      ৳60
-                    </p>
-                  </div>
-                </div>
+              <label className="block text-sm font-medium mb-2">
+                Note
+              </label>
 
-                {/* Outside Dhaka */}
-                <div
-                  className={`rounded-2xl border-2 p-5 transition ${
-                    !isDhaka && formData.district
-                      ? "border-amber-500 bg-amber-50"
-                      : "border-gray-200 bg-white"
-                  }`}
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <h3 className="font-bold">ঢাকা শহরের বাইরে</h3>
-                    <p className="mt-2 text-2xl font-bold text-amber-500">
-                      ৳100
-                    </p>
-                  </div>
-                </div>
+              <div className="relative">
+
+                <FiFileText
+                  className="absolute left-3 top-3 text-gray-400"
+                />
+
+                <textarea
+                  name="note"
+                  value={formData.note}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Optional note..."
+                  className="w-full border rounded-xl pl-10 pr-4 py-3 outline-none resize-none focus:ring-2 focus:ring-black"
+                />
+
               </div>
 
-              <p className="text-sm text-gray-500 mt-3">
-                জেলা সিলেক্ট করলে ডেলিভারি চার্জ স্বয়ংক্রিয়ভাবে সেট হয়ে
-                যাবে।
-              </p>
             </div>
+
+          </div>
+
+          {/* =================================
+              ORDER SUMMARY
+          ================================= */}
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm h-fit">
+
+            <h2 className="text-xl font-semibold mb-6">
+              Order Summary
+            </h2>
+
+            <div className="space-y-5 mb-6">
+
+              {orderItems.map(
+                (item, index) => (
+
+                  <div
+                    key={`${item.productId}-${index}`}
+                    className="flex gap-4 border-b pb-5"
+                  >
+
+                    {/* IMAGE */}
+
+                    <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+
+                      {item.productImage ? (
+                        <img
+                          src={
+                            item.productImage
+                          }
+                          alt={
+                            item.productName
+                          }
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                          No Image
+                        </div>
+                      )}
+
+                    </div>
+
+                    {/* INFO */}
+
+                    <div className="flex-1">
+
+                      <h3 className="font-medium">
+                        {item.productName ||
+                          "Product"}
+                      </h3>
+
+                      <p className="text-sm text-gray-500 mt-1">
+                        ৳
+                        {item.price.toFixed(
+                          2
+                        )} ×{" "}
+                        {item.quantity}
+                      </p>
+
+                      <p className="font-semibold mt-1">
+                        ৳
+                        {item.subtotal.toFixed(
+                          2
+                        )}
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                )
+              )}
+
+            </div>
+
+            {/* PRICE */}
+
+            <div className="space-y-3">
+
+              <div className="flex justify-between">
+                <span className="text-gray-600">
+                  Subtotal
+                </span>
+
+                <span className="font-medium">
+                  ৳
+                  {subtotal.toFixed(2)}
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-600">
+                  Delivery Charge
+                </span>
+
+                <span className="font-medium">
+                  ৳
+                  {deliveryCharge.toFixed(
+                    2
+                  )}
+                </span>
+              </div>
+
+              <div className="border-t pt-4 flex justify-between text-lg font-bold">
+
+                <span>
+                  Total
+                </span>
+
+                <span>
+                  ৳
+                  {total.toFixed(2)}
+                </span>
+
+              </div>
+
+            </div>
+
+            {/* PAYMENT */}
+
+            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+
+              <p className="font-medium">
+                Payment Method
+              </p>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Cash on Delivery
+              </p>
+
+            </div>
+
+            {/* PLACE ORDER */}
 
             <button
               type="submit"
-              className="mt-10 w-full h-14 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-lg font-semibold shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300"
+              disabled={loading}
+              className="w-full mt-6 bg-black text-white py-3.5 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Place Order
+              {loading
+                ? "Placing Order..."
+                : "Place Order"}
             </button>
-          </form>
 
-          {/* ===========================
-              Order Summary
-          =========================== */}
-
-          <div className="sticky top-8 h-fit rounded-3xl border border-white/40 bg-white/70 backdrop-blur-2xl shadow-2xl overflow-hidden">
-            <div className="p-6 border-b">
-              <h2 className="text-2xl font-bold">Order Summary</h2>
-
-              <p className="text-gray-500 text-sm">
-  {isBuyNow ? quantity : cartItems.length} Product
-  {(isBuyNow ? quantity : cartItems.length) !== 1 ? "s" : ""}
-</p>
-            </div>
-
-            <div className="max-h-[420px] overflow-y-auto">
-              {isBuyNow ? (
-                <div className="flex gap-4 p-5 border-b">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-20 h-20 rounded-xl bg-gray-100 object-contain"
-                  />
-
-                  <div className="flex-1">
-                    <h3 className="font-semibold line-clamp-2">
-                      {product.name}
-                    </h3>
-
-                    <p className="text-gray-500 text-sm mt-1">
-                      Qty : {quantity}
-                    </p>
-
-                    <p className="font-bold text-amber-600 mt-2">
-                      ${product.price}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                cartItems.map((item) => (
-                  <div key={item.id} className="flex gap-4 p-5 border-b">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-20 h-20 rounded-xl bg-gray-100 object-contain"
-                    />
-
-                    <div className="flex-1">
-                      <h3 className="font-semibold line-clamp-2">
-                        {item.name}
-                      </h3>
-
-                      <p className="text-gray-500 text-sm mt-1">
-                        Qty : {item.quantity}
-                      </p>
-
-                      <p className="font-bold text-amber-600 mt-2">
-                        ${item.price}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="p-7">
-              <hr />
-
-              <div className="mt-5 space-y-4">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>${subtotal}</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span>Delivery</span>
-                  <span>${deliveryCharge}</span>
-                </div>
-
-                <hr />
-
-                <div className="flex justify-between text-2xl font-bold">
-                  <span>Total</span>
-                  <span className="text-amber-500">${total}</span>
-                </div>
-              </div>
-
-              <div className="mt-8 rounded-2xl bg-green-50 border border-green-200 p-4">
-                <h4 className="font-semibold text-green-700">
-                  🚚 Fast Delivery
-                </h4>
-
-                <p className="text-sm text-gray-600 mt-1">
-                  Estimated Delivery within 2-3 Working Days.
-                </p>
-              </div>
-
-              <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-5">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">🔒</span>
-
-                  <div>
-                    <h4 className="font-bold text-blue-700">
-                      Secure Checkout
-                    </h4>
-
-                    <p className="text-sm text-gray-600">
-                      SSL Encrypted &amp; 100% Secure Payment
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-2xl border border-purple-200 bg-purple-50 p-5">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">↩️</span>
-
-                  <div>
-                    <h4 className="font-bold text-purple-700">
-                      Easy Return
-                    </h4>
-
-                    <p className="text-sm text-gray-600">
-                      7 Days Return Policy Available
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
-        </div>
+
+        </form>
+
       </div>
-    </section>
+    </div>
   );
 };
 
