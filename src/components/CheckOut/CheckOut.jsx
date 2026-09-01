@@ -79,6 +79,9 @@ const Checkout = () => {
       }),
     });
 
+    console.log("STATUS:", res.status);
+console.log("RESPONSE:", data);
+
     if (!res.ok) throw new Error("Order failed");
 
     if (!isBuyNow) dispatch(clearCart());
