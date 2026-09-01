@@ -292,9 +292,9 @@ const Checkout = () => {
               <h2 className="text-2xl font-bold">Order Summary</h2>
 
               <p className="text-gray-500 text-sm">
-                {isBuyNow ? 1 : cartItems.length} Product
-                {isBuyNow ? "" : cartItems.length !== 1 ? "s" : ""}
-              </p>
+  {isBuyNow ? quantity : cartItems.length} Product
+  {(isBuyNow ? quantity : cartItems.length) !== 1 ? "s" : ""}
+</p>
             </div>
 
             <div className="max-h-[420px] overflow-y-auto">
