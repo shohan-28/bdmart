@@ -8,6 +8,7 @@ import Services from "./components/Services/Services";
 import CartPage from "./components/CartPage/CartPage";
 import Checkout from './components/CheckOut/CheckOut';
 import SideCart from './components/SideCart/SideCart';
+import MakeupOne from "./components/LandingPage/MakeupOne";
 
 const router = createBrowserRouter([
     {
@@ -59,9 +60,13 @@ const router = createBrowserRouter([
                 {
                 path: "/SideCart",
             element: <SideCart></SideCart>
-                }
+                },
 
+                {
+             path:"/MakeupOne/:id",
+            element: <MakeupOne />
 
+                },
 
             
             ]
