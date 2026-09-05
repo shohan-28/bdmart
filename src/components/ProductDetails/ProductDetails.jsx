@@ -1,8 +1,7 @@
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { addToCart } from "../Feature/CartSlice"
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 
 import {
   FiHeart,
@@ -10,735 +9,2085 @@ import {
   FiPlus,
   FiShoppingBag,
   FiTruck,
+  FiChevronDown,
+  FiChevronUp,
+  FiPackage,
+  FiInfo,
+  FiList,
+  FiTool,
+  FiRotateCcw,
+  FiShield,
+  FiCheck,
+  FiHome,
+  FiTag,
+  FiBox,
 } from "react-icons/fi";
 
-import { IoStar } from "react-icons/io5";
+import { IoStar, IoStarOutline } from "react-icons/io5";
 
 import { fetchProduct } from "../Feature/ProductSlice";
-import Checkout from './../CheckOut/CheckOut';
-
+import { addToCart } from "../Feature/CartSlice";
 
 const ProductDetails = () => {
-  
-  const navigate = useNavigate();
-  // URL থেকে productId নেওয়া
-  // Example: /ProductDetails/1
   const { productId } = useParams();
 
-
-  // Redux থেকে product data নেওয়া
-  const ProductData = useSelector(
-    (state) => state.product.product
-  );
-
-  const loading = useSelector(
-    (state) => state.product.loading
-  );
-
-  const error = useSelector(
-    (state) => state.product.error
-  );
-
-
-  // Redux dispatch
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
+  const productState = useSelector((state) => state.product);
 
-  // Product fetch করা
+  const products = productState?.product || [];
+  const loading = productState?.loading || false;
+  const error = productState?.error || null;
+
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedImage, setSelectedImage] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [wishlist, setWishlist] = useState(false);
+
+  const [openSection, setOpenSection] = useState(null);
+
+  /*
+  ============================================================
+  FETCH PRODUCTS
+  ============================================================
+  */
+
   useEffect(() => {
-
-    // যদি Redux এ product data না থাকে,
-    // তাহলে fetch করবে
-    if (ProductData.length === 0) {
+    if (!products || products.length === 0) {
       dispatch(fetchProduct());
     }
+  }, [dispatch, products]);
 
-  }, [dispatch, ProductData.length]);
+  /*
+  ============================================================
+  FIND CURRENT PRODUCT
+  ============================================================
+  */
 
+ 
 
-  // URL এর productId দিয়ে নির্দিষ্ট product খুঁজে বের করা
-  const product = ProductData.find(
-    (item) => Number(item.id) === Number(productId)
-  );
+const product = Array.isArray(products)
+  ? products.find((item) => String(item.id) === String(productId))
+  : null;
 
+  /*
+  ============================================================
+  PRODUCT VARIANTS
+  ============================================================
+  */
 
-  // Selected Image
-  const [selectedImage, setSelectedImage] = useState("");
+  const variants = useMemo(() => {
+    if (!product) return [];
 
-
-  // Quantity
-  const [quantity, setQuantity] = useState(1);
-
-
-  // Product পাওয়া গেলে প্রথম image selected হবে
-  useEffect(() => {
-
-    if (product) {
-      setSelectedImage(
-        product.images?.[0] || product.image
-      );
+    if (
+      Array.isArray(product.variants) &&
+      product.variants.length > 0
+    ) {
+      return product.variants;
     }
 
+    return [
+      {
+        id: `${product.id}-default`,
+        color: product.color || "Default",
+        colorCode: product.colorCode || "#e5e7eb",
+        price: product.price,
+        oldPrice: product.oldPrice,
+        stock: product.stock || 0,
+        images:
+          Array.isArray(product.images) &&
+          product.images.length > 0
+            ? product.images
+            : [product.image],
+      },
+    ];
   }, [product]);
 
+  /*
+  ============================================================
+  INITIALIZE PRODUCT VARIANT
+  ============================================================
+  */
 
-  // Loading State
-  if (loading) {
+  useEffect(() => {
+    if (!product || variants.length === 0) {
+      setSelectedVariant(null);
+      setSelectedColor("");
+      setSelectedSize("");
+      setSelectedImage("");
+      setQuantity(1);
+      return;
+    }
+
+    const firstAvailableVariant =
+      variants.find((variant) => {
+        if (
+          Array.isArray(variant?.sizes) &&
+          variant.sizes.length > 0
+        ) {
+          return variant.sizes.some(
+            (size) => Number(size?.stock || 0) > 0
+          );
+        }
+
+        return Number(variant?.stock || 0) > 0;
+      }) || variants[0];
+
+    setSelectedVariant(firstAvailableVariant);
+
+    setSelectedColor(
+      firstAvailableVariant?.color || ""
+    );
+
+    const variantImages =
+      Array.isArray(firstAvailableVariant?.images) &&
+      firstAvailableVariant.images.length > 0
+        ? firstAvailableVariant.images
+        : Array.isArray(product.images) &&
+          product.images.length > 0
+        ? product.images
+        : [product.image];
+
+    setSelectedImage(variantImages?.[0] || "");
+
+    const firstAvailableSize =
+      Array.isArray(firstAvailableVariant?.sizes)
+        ? firstAvailableVariant.sizes.find(
+            (size) => Number(size?.stock || 0) > 0
+          )
+        : null;
+
+    setSelectedSize(
+      firstAvailableSize?.size || ""
+    );
+
+    setQuantity(1);
+  }, [product, variants]);
+
+  /*
+  ============================================================
+  CURRENT STOCK
+  ============================================================
+  */
+
+  const currentStock = useMemo(() => {
+    if (!selectedVariant) return 0;
+
+    if (
+      Array.isArray(selectedVariant.sizes) &&
+      selectedVariant.sizes.length > 0
+    ) {
+      const currentSize =
+        selectedVariant.sizes.find(
+          (size) =>
+            String(size?.size) ===
+            String(selectedSize)
+        );
+
+      return Number(currentSize?.stock || 0);
+    }
+
+    return Number(selectedVariant.stock || 0);
+  }, [selectedVariant, selectedSize]);
+
+  /*
+  ============================================================
+  CURRENT PRICE
+  ============================================================
+  */
+
+  const currentPrice = Number(
+    selectedVariant?.price ??
+      product?.price ??
+      0
+  );
+
+  const currentOldPrice = Number(
+    selectedVariant?.oldPrice ??
+      product?.oldPrice ??
+      0
+  );
+
+  /*
+  ============================================================
+  DISCOUNT
+  ============================================================
+  */
+
+  const discountPercentage =
+    currentOldPrice > currentPrice
+      ? Math.round(
+          ((currentOldPrice - currentPrice) /
+            currentOldPrice) *
+            100
+        )
+      : Number(product?.discount || 0);
+
+  /*
+  ============================================================
+  PRODUCT IMAGES
+  ============================================================
+  */
+
+  const productImages = useMemo(() => {
+    if (!product) return [];
+
+    const variantImages =
+      Array.isArray(selectedVariant?.images)
+        ? selectedVariant.images
+        : [];
+
+    const mainImages =
+      Array.isArray(product.images) &&
+      product.images.length > 0
+        ? product.images
+        : [product.image];
+
+    const images =
+      variantImages.length > 0
+        ? variantImages
+        : mainImages;
+
+    return [
+      ...new Set(
+        images.filter(
+          (image) =>
+            typeof image === "string" &&
+            image.trim() !== ""
+        )
+      ),
+    ];
+  }, [product, selectedVariant]);
+
+  /*
+  ============================================================
+  COLOR CHANGE
+  ============================================================
+  */
+
+  const handleColorChange = (variant) => {
+    if (!variant) return;
+
+    setSelectedVariant(variant);
+
+    setSelectedColor(
+      variant.color || ""
+    );
+
+    const images =
+      Array.isArray(variant.images) &&
+      variant.images.length > 0
+        ? variant.images
+        : Array.isArray(product?.images) &&
+          product.images.length > 0
+        ? product.images
+        : [product?.image];
+
+    setSelectedImage(images?.[0] || "");
+
+    const firstAvailableSize =
+      Array.isArray(variant.sizes)
+        ? variant.sizes.find(
+            (size) =>
+              Number(size?.stock || 0) > 0
+          )
+        : null;
+
+    setSelectedSize(
+      firstAvailableSize?.size || ""
+    );
+
+    setQuantity(1);
+  };
+
+  /*
+  ============================================================
+  SIZE CHANGE
+  ============================================================
+  */
+
+  const handleSizeChange = (size) => {
+    if (!size) return;
+
+    if (Number(size.stock || 0) <= 0) {
+      return;
+    }
+
+    setSelectedSize(size.size);
+    setQuantity(1);
+  };
+
+  /*
+  ============================================================
+  QUANTITY
+  ============================================================
+  */
+
+  const increaseQuantity = () => {
+    if (currentStock > 0 && quantity < currentStock) {
+      setQuantity((prev) => prev + 1);
+    }
+  };
+
+  const decreaseQuantity = () => {
+    if (quantity > 1) {
+      setQuantity((prev) => prev - 1);
+    }
+  };
+
+  /*
+  ============================================================
+  CHECKOUT PRODUCT
+  ============================================================
+  */
+
+  const checkoutProduct = useMemo(() => {
+    if (!product) return null;
+
+    return {
+      ...product,
+
+      variantId:
+        selectedVariant?.id || null,
+
+      selectedColor:
+        selectedVariant?.color ||
+        product.color ||
+        null,
+
+      selectedColorCode:
+        selectedVariant?.colorCode ||
+        null,
+
+      selectedSize:
+        selectedSize || null,
+
+      price: currentPrice,
+
+      oldPrice: currentOldPrice,
+
+      image:
+        selectedVariant?.images?.[0] ||
+        selectedImage ||
+        product.image,
+
+      quantity,
+    };
+  }, [
+    product,
+    selectedVariant,
+    selectedSize,
+    currentPrice,
+    currentOldPrice,
+    selectedImage,
+    quantity,
+  ]);
+
+  /*
+  ============================================================
+  VALIDATE PRODUCT SELECTION
+  ============================================================
+  */
+
+  const validateSelection = () => {
+    if (!product) {
+      return false;
+    }
+
+    if (!selectedVariant) {
+      alert("দয়া করে একটি color select করুন।");
+      return false;
+    }
+
+    if (currentStock <= 0) {
+      alert("এই product বর্তমানে stock out.");
+      return false;
+    }
+
+    if (
+      Array.isArray(selectedVariant?.sizes) &&
+      selectedVariant.sizes.length > 0 &&
+      !selectedSize
+    ) {
+      alert("দয়া করে একটি size select করুন।");
+      return false;
+    }
+
+    return true;
+  };
+
+  /*
+  ============================================================
+  ADD TO CART
+  ============================================================
+  */
+
+  const handleAddToCart = () => {
+    if (!validateSelection()) return;
+
+    dispatch(addToCart(checkoutProduct));
+  };
+
+  /*
+  ============================================================
+  BUY NOW
+  ============================================================
+  */
+
+  const handleBuyNow = () => {
+    if (!validateSelection()) return;
+
+    navigate("/Checkout", {
+      state: {
+        product: checkoutProduct,
+        quantity,
+      },
+    });
+  };
+
+  /*
+  ============================================================
+  ACCORDION
+  ============================================================
+  */
+
+  const toggleSection = (section) => {
+    setOpenSection((prev) =>
+      prev === section ? null : section
+    );
+  };
+
+  /*
+  ============================================================
+  SEO
+  ============================================================
+  */
+
+  const seoTitle = product
+    ? `${product.name}${
+        product.brand
+          ? ` | ${product.brand}`
+          : ""
+      } | Spriengge`
+    : "Product Details | Spriengge";
+
+  const seoDescription =
+    product?.details?.shortDescription ||
+    product?.description ||
+    `Buy ${
+      product?.name || "quality products"
+    } online from Spriengge. Check product price, features, specifications, colors, sizes and delivery information.`;
+
+  const seoKeywords = [
+    product?.name,
+    product?.brand,
+    product?.category,
+    ...(Array.isArray(product?.tags)
+      ? product.tags
+      : []),
+    "online shopping Bangladesh",
+    "buy online Bangladesh",
+    "Spriengge",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  /*
+  ============================================================
+  CANONICAL URL
+  ============================================================
+  */
+
+  const canonicalUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/ProductDetails/${productId}`
+      : "";
+
+  /*
+  ============================================================
+  SEO IMAGE
+  ============================================================
+  */
+
+  const seoImage =
+    selectedVariant?.images?.[0] ||
+    product?.image ||
+    "";
+
+  /*
+  ============================================================
+  PRODUCT SCHEMA
+  ============================================================
+  */
+
+  const productSchema = product
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Product",
+
+        name: product.name,
+
+        description: seoDescription,
+
+        image: productImages,
+
+        sku: String(product.id),
+
+        category: product.category || undefined,
+
+        brand: {
+          "@type": "Brand",
+          name:
+            product.brand || "Spriengge",
+        },
+
+        ...(product.rating &&
+        Number(product.reviews || 0) > 0
+          ? {
+              aggregateRating: {
+                "@type":
+                  "AggregateRating",
+                ratingValue: Number(
+                  product.rating
+                ),
+                reviewCount: Number(
+                  product.reviews
+                ),
+              },
+            }
+          : {}),
+
+        offers: {
+          "@type": "Offer",
+
+          url: canonicalUrl,
+
+          priceCurrency: "BDT",
+
+          price: currentPrice,
+
+          availability:
+            currentStock > 0
+              ? "https://schema.org/InStock"
+              : "https://schema.org/OutOfStock",
+
+          itemCondition:
+            "https://schema.org/NewCondition",
+        },
+      }
+    : null;
+
+  /*
+  ============================================================
+  LOADING
+  ============================================================
+  */
+
+  if (loading && !product) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <h2 className="text-2xl font-bold">
-          Loading Product...
-        </h2>
-      </div>
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center">
+
+          <div className="w-11 h-11 border-4 border-gray-200 border-t-black rounded-full animate-spin mx-auto mb-5" />
+
+          <h2 className="text-lg font-semibold text-gray-900">
+            Product loading...
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-2">
+            Please wait a moment.
+          </p>
+
+        </div>
+      </main>
     );
   }
 
+  /*
+  ============================================================
+  ERROR
+  ============================================================
+  */
 
-  // Error State
-  if (error) {
+  if (error && !product) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-xl font-semibold text-red-500">
-          {error}
-        </p>
-      </div>
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+
+          <FiBox className="text-5xl text-gray-300 mx-auto mb-5" />
+
+          <h1 className="text-2xl font-bold text-gray-900">
+            Unable to Load Product
+          </h1>
+
+          <p className="text-gray-500 mt-3 mb-6">
+            Product data load করতে সমস্যা হয়েছে।
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              dispatch(fetchProduct())
+            }
+            className="bg-black text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition"
+          >
+            Try Again
+          </button>
+
+        </div>
+      </main>
     );
   }
 
+  /*
+  ============================================================
+  PRODUCT NOT FOUND
+  ============================================================
+  */
 
-  // Product Not Found
   if (!product) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-5">
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
 
-        <h1 className="text-3xl font-bold">
-          Product Not Found
-        </h1>
+        <div className="text-center max-w-md">
 
-        <Link
-          to="/"
-          className="rounded-xl bg-black px-6 py-3 font-semibold text-white"
-        >
-          Back To Home
-        </Link>
+          <div className="w-20 h-20 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
+            <FiBox className="text-4xl text-gray-300" />
+          </div>
 
-      </div>
-    );
-  }
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">
+            Product Not Found
+          </h1>
 
+          <p className="text-gray-500 mb-2">
+            এই product টি খুঁজে পাওয়া যায়নি।
+          </p>
 
-  
-
-
-  return (
-
-    <section className="min-h-screen py-10 md:py-16 bg-transparent">
-
-      <div className="mx-auto w-[90%] ">
-
-
-        {/* Breadcrumb */}
-
-        <div className="mb-8 flex items-center gap-2 text-sm text-gray-500">
+          <p className="text-xs text-gray-400 mb-6">
+            Product ID: {productId}
+          </p>
 
           <Link
             to="/"
-            className="cursor-pointer hover:text-black"
+            className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition"
           >
-            Home
+            <FiHome />
+            Back to Home
           </Link>
-
-          <span>/</span>
-
-          <span className="cursor-pointer hover:text-black">
-            Products
-          </span>
-
-          <span>/</span>
-
-          <span className="font-medium text-gray-900">
-            {product.name}
-          </span>
 
         </div>
 
+      </main>
+    );
+  }
 
+  /*
+  ============================================================
+  RATING
+  ============================================================
+  */
 
-        {/* Main Product Area */}
+  const rating = Number(product.rating || 0);
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
+  return (
+    <>
+      {/* ======================================================
+          SEO
+      ====================================================== */}
 
+      <Helmet>
 
-          {/* =========================
-              LEFT SIDE
-          ========================== */}
+        <title>{seoTitle}</title>
 
-          <div className="relative">
+        <meta
+          name="description"
+          content={seoDescription.slice(
+            0,
+            160
+          )}
+        />
 
+        <meta
+          name="keywords"
+          content={seoKeywords}
+        />
 
-            {/* New Badge */}
+        <meta
+          name="robots"
+          content="index, follow, max-image-preview:large"
+        />
 
-            {product.isNew && (
+        <link
+          rel="canonical"
+          href={canonicalUrl}
+        />
 
-              <span className="absolute left-5 top-5 z-10 rounded-full bg-black px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white">
+        {/* Open Graph */}
 
-                New Arrival
+        <meta
+          property="og:type"
+          content="product"
+        />
 
-              </span>
+        <meta
+          property="og:title"
+          content={seoTitle}
+        />
 
+        <meta
+          property="og:description"
+          content={seoDescription.slice(
+            0,
+            200
+          )}
+        />
+
+        <meta
+          property="og:url"
+          content={canonicalUrl}
+        />
+
+        <meta
+          property="og:site_name"
+          content="Spriengge"
+        />
+
+        {seoImage && (
+          <meta
+            property="og:image"
+            content={seoImage}
+          />
+        )}
+
+        {/* Twitter */}
+
+        <meta
+          name="twitter:card"
+          content="summary_large_image"
+        />
+
+        <meta
+          name="twitter:title"
+          content={seoTitle}
+        />
+
+        <meta
+          name="twitter:description"
+          content={seoDescription.slice(
+            0,
+            200
+          )}
+        />
+
+        {seoImage && (
+          <meta
+            name="twitter:image"
+            content={seoImage}
+          />
+        )}
+
+        {/* Product JSON-LD */}
+
+        {productSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(productSchema)}
+          </script>
+        )}
+
+      </Helmet>
+
+      {/* ======================================================
+          PAGE
+      ====================================================== */}
+
+      <main className="min-h-screen bg-transparent text-gray-900">
+
+        {/* ====================================================
+            BREADCRUMB
+        ==================================================== */}
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+
+          <nav
+            aria-label="Breadcrumb"
+            className="flex flex-wrap items-center gap-2 text-sm text-gray-500"
+          >
+
+            <Link
+              to="/"
+              className="hover:text-black transition"
+            >
+              Home
+            </Link>
+
+            <span>/</span>
+
+            {product.category && (
+              <>
+                <span className="hover:text-black">
+                  {product.category}
+                </span>
+
+                <span>/</span>
+              </>
             )}
 
-
-
-            {/* Wishlist */}
-
-            <button className="absolute right-5 top-5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-md transition hover:bg-black hover:text-white">
-
-              <FiHeart className="text-xl" />
-
-            </button>
-
-
-
-            {/* Main Image */}
-
-            <div className="flex h-[420px] items-center justify-center overflow-hidden rounded-3xl bg-white p-8 shadow-sm md:h-[550px]">
-
-              <img
-                src={selectedImage}
-                alt={product.name}
-                className="h-full w-full object-contain transition duration-500 hover:scale-105"
-              />
-
-            </div>
-
-
-
-            {/* Thumbnail Images */}
-
-            <div className="mt-5 grid grid-cols-4 gap-4">
-
-              {product.images?.map((image, index) => (
-
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(image)}
-                  className={`flex h-24 cursor-pointer items-center justify-center rounded-2xl bg-white p-3 ${
-                    selectedImage === image
-                      ? "border-2 border-black"
-                      : "border border-gray-200 hover:border-black"
-                  }`}
-                >
-
-                  <img
-                    src={image}
-                    alt={`${product.name} thumbnail`}
-                    className="h-full w-full object-contain"
-                  />
-
-                </button>
-
-              ))}
-
-            </div>
-
-          </div>
-
-
-
-          {/* =========================
-              RIGHT SIDE
-          ========================== */}
-
-          <div className="flex flex-col justify-center">
-
-
-            {/* Category */}
-
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
-
-              {product.category}
-
-            </p>
-
-
-
-            {/* Product Title */}
-
-            <h1 className="text-3xl font-bold leading-tight text-gray-900 md:text-5xl">
-
+            <span className="text-gray-900 font-medium truncate max-w-[250px]">
               {product.name}
+            </span>
 
-            </h1>
+          </nav>
 
+        </div>
 
+        {/* ====================================================
+            PRODUCT HERO
+        ==================================================== */}
 
-            {/* Rating */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-            <div className="mt-5 flex flex-wrap items-center gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
 
+            {/* =================================================
+                IMAGE GALLERY
+            ================================================= */}
 
-              {/* Stars */}
+            <div>
 
-              <div className="flex items-center gap-1">
+              <div className="relative bg-gray-50 rounded-3xl overflow-hidden aspect-square">
 
-                {[1, 2, 3, 4, 5].map((star) => (
+                {discountPercentage > 0 && (
+                  <div className="absolute top-5 left-5 z-10 bg-black text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-full">
+                    -{discountPercentage}% OFF
+                  </div>
+                )}
 
-                  <IoStar
-                    key={star}
-                    className="text-lg text-yellow-500"
-                  />
+                {product.isNew && (
+                  <div className="absolute top-5 right-5 z-10 bg-white border border-gray-200 text-gray-900 text-xs font-bold px-4 py-2 rounded-full shadow-sm">
+                    NEW
+                  </div>
+                )}
 
-                ))}
+                <img
+                  src={
+                    selectedImage ||
+                    product.image
+                  }
+                  alt={`${product.name}${
+                    selectedVariant?.color
+                      ? ` - ${selectedVariant.color}`
+                      : ""
+                  }`}
+                  title={product.name}
+                  loading="eager"
+                  className="w-full h-full object-contain p-6 sm:p-10"
+                />
 
               </div>
 
+              {productImages.length > 1 && (
+                <div className="flex gap-3 mt-4 overflow-x-auto pb-2">
 
+                  {productImages.map(
+                    (image, index) => (
+                      <button
+                        key={`${image}-${index}`}
+                        type="button"
+                        onClick={() =>
+                          setSelectedImage(
+                            image
+                          )
+                        }
+                        aria-label={`View ${product.name} image ${
+                          index + 1
+                        }`}
+                        className={`flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl border-2 overflow-hidden bg-gray-50 transition cursor-pointer ${
+                          selectedImage === image
+                            ? "border-black shadow-md"
+                            : "border-gray-200 hover:border-gray-400"
+                        }`}
+                      >
+
+                        <img
+                          src={image}
+                          alt={`${product.name} image ${
+                            index + 1
+                          }`}
+                          loading="lazy"
+                          className="w-full h-full object-contain p-2"
+                        />
+
+                      </button>
+                    )
+                  )}
+
+                </div>
+              )}
+
+            </div>
+
+            {/* =================================================
+                PRODUCT INFORMATION
+            ================================================= */}
+
+            <div className="flex flex-col">
+
+              {/* Brand */}
+
+              {product.brand && (
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 mb-3">
+                  {product.brand}
+                </p>
+              )}
+
+              {/* H1 */}
+
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-950 leading-tight">
+                {product.name}
+              </h1>
 
               {/* Rating */}
 
-              <span className="text-sm font-medium text-gray-500">
-
-                {product.rating} ({product.reviews} Reviews)
-
-              </span>
-
-
-
-              <span className="h-1 w-1 rounded-full bg-gray-300"></span>
-
-
-
-              {/* Stock */}
-
-              <span
-                className={`text-sm font-semibold ${
-                  product.stock
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-
-                {product.stock
-                  ? "In Stock"
-                  : "Out of Stock"}
-
-              </span>
-
-            </div>
-
-
-
-            {/* Price */}
-
-            <div className="mt-7 flex flex-wrap items-center gap-4">
-
-              <span className="text-4xl font-bold text-gray-900">
-
-                ৳ {product.price}
-
-              </span>
-
-
-              {product.oldPrice && (
-
-                <span className="text-xl text-gray-400 line-through">
-
-                  ${product.oldPrice}
-
-                </span>
-
-              )}
-
-
-              {product.discount && (
-
-                <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-bold text-red-600">
-
-                  {product.discount}% OFF
-
-                </span>
-
-              )}
-
-            </div>
-
-
-
-            {/* Description */}
-
-            <p className="mt-7 max-w-xl text-base leading-7 text-gray-600">
-
-              {product.description}
-
-            </p>
-
-
-
-            {/* Divider */}
-
-            <div className="my-8 h-px bg-gray-200"></div>
-
-
-
-            {/* Size */}
-
-            <div>
-
-              <div className="mb-4 flex items-center justify-between">
-
-                <h3 className="font-semibold text-gray-900">
-
-                  Select Size
-
-                </h3>
-
-                <button className="text-sm font-medium underline">
-
-                  Size Guide
-
-                </button>
-
-              </div>
-
-
-
-              <div className="flex flex-wrap gap-3">
-
-                {product.sizes?.map((size) => (
-
-                  <button
-                    key={size}
-                    className="h-12 w-14 rounded-xl border border-gray-300 bg-white font-medium hover:border-black"
-                  >
-
-                    {size}
-
-                  </button>
-
-                ))}
-
-              </div>
-
-            </div>
-
-
-
-            {/* Quantity + Cart */}
-
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-
-
-              {/* Quantity */}
-
-              <div className="flex h-14 items-center justify-between rounded-xl border border-gray-300 bg-white px-4 sm:w-36">
-
-
-                {/* Minus */}
-
-                <button
-                  onClick={() =>
-                    setQuantity(
-                      Math.max(1, quantity - 1)
-                    )
-                  }
-                  className="text-xl text-gray-500 hover:text-black"
+              <div className="flex flex-wrap items-center gap-3 mt-4">
+
+                <div
+                  className="flex items-center gap-1"
+                  aria-label={`Rating ${rating} out of 5`}
                 >
 
-                  <FiMinus />
+                  {[1, 2, 3, 4, 5].map(
+                    (star) =>
+                      star <=
+                      Math.round(rating) ? (
+                        <IoStar
+                          key={star}
+                          className="text-yellow-500 text-lg"
+                        />
+                      ) : (
+                        <IoStarOutline
+                          key={star}
+                          className="text-gray-300 text-lg"
+                        />
+                      )
+                  )}
 
-                </button>
+                </div>
 
+                {rating > 0 && (
+                  <span className="text-sm font-semibold text-gray-700">
+                    {rating.toFixed(1)}
+                  </span>
+                )}
 
+                {Number(product.reviews || 0) >
+                  0 && (
+                  <span className="text-sm text-gray-500">
+                    ({product.reviews} reviews)
+                  </span>
+                )}
 
-                {/* Quantity */}
+              </div>
 
-                <span className="font-semibold">
+              {/* Price */}
 
-                  {quantity}
+              <div className="flex items-center gap-3 mt-6">
 
+                <span className="text-3xl font-bold text-gray-950">
+                  ৳
+                  {currentPrice.toLocaleString(
+                    "en-BD"
+                  )}
                 </span>
 
-
-
-                {/* Plus */}
-
-                <button
-                  onClick={() =>
-                    setQuantity(quantity + 1)
-                  }
-                  className="text-xl text-gray-500 hover:text-black"
-                >
-
-                  <FiPlus />
-
-                </button>
+                {currentOldPrice >
+                  currentPrice && (
+                  <span className="text-lg text-gray-400 line-through">
+                    ৳
+                    {currentOldPrice.toLocaleString(
+                      "en-BD"
+                    )}
+                  </span>
+                )}
 
               </div>
 
-
-
-              {/* Add To Cart */}
-
-              <button
-                onClick={()=> dispatch(addToCart({...product, quantity}))}
-                disabled={!product.stock}
-                className="flex h-14 flex-1 items-center justify-center gap-3 rounded-xl bg-black px-6 font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-400 cursor-pointer"
-              >
-
-                <FiShoppingBag className="text-xl" />
-
-                Add to Cart
-
-              </button>
-
-            </div>
-
-
-
-            {/* Buy Now */}
-
-            <button
-            onClick={()=>
-              navigate("/Checkout", {
-                state: {product, quantity,}
-              })
-            }
-            className="mt-4 h-14 w-full rounded-xl border-2 border-black bg-white font-semibold text-black transition hover:bg-black hover:text-white cursor-pointer">
-
-              Buy Now
-
-            </button>
-
-
-
-            {/* Delivery Info */}
-
-            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-
-
-              {/* Free Delivery */}
-
-              <div className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5">
-
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100">
-
-                  <FiTruck className="text-xl" />
-
-                </div>
-
-                <div>
-
-                  <h4 className="font-semibold text-gray-900">
-
-                    Free Delivery
-
-                  </h4>
-
-                  <p className="mt-1 text-sm text-gray-500">
-
-                    Delivery within 3-5 days
-
-                  </p>
-
-                </div>
-
-              </div>
-
-
-
-              {/* Easy Returns */}
-
-              <div className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5">
-
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100">
-
-                  <FiShoppingBag className="text-xl" />
-
-                </div>
-
-                <div>
-
-                  <h4 className="font-semibold text-gray-900">
-
-                    Easy Returns
-
-                  </h4>
-
-                  <p className="mt-1 text-sm text-gray-500">
-
-                    30 days return policy
-
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-
-        {/* =========================
-            PRODUCT DETAILS
-        ========================== */}
-
-        <div className="mt-20 rounded-3xl bg-white p-6 shadow-sm md:p-10">
-
-
-          <div className="border-b border-gray-200 pb-5">
-
-            <h2 className="text-2xl font-bold text-gray-900">
-
-              Product Details
-
-            </h2>
-
-          </div>
-
-
-
-          <div className="grid grid-cols-1 gap-8 pt-8 md:grid-cols-2">
-
-
-            {/* Description */}
-
-            <div>
-
-              <h3 className="mb-4 text-lg font-semibold">
-
-                Description
-
-              </h3>
-
-              <p className="leading-7 text-gray-600">
-
-                {product.description}
-
+              {/* Description */}
+
+              <p className="text-gray-600 leading-7 mt-5">
+                {product.details
+                  ?.shortDescription ||
+                  product.description ||
+                  "No description available."}
               </p>
 
-            </div>
+              {/* =================================================
+                  SELECT COLOR
+              ================================================= */}
 
+              {variants.length > 0 && (
+                <div className="mt-8">
 
+                  <div className="flex items-center justify-between mb-4">
 
-            {/* Specifications */}
+                    <div>
 
-            <div>
+                      <h2 className="text-base font-bold text-gray-950">
+                        Select Color
+                      </h2>
 
-              <h3 className="mb-4 text-lg font-semibold">
+                      <p className="text-sm text-gray-500 mt-1">
+                        Selected:{" "}
+                        <span className="font-semibold text-gray-900">
+                          {selectedColor ||
+                            "Choose a color"}
+                        </span>
+                      </p>
 
-                Specifications
+                    </div>
 
-              </h3>
+                    <FiTag className="text-gray-400 text-lg" />
 
+                  </div>
 
-              <div className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
 
+                    {variants.map(
+                      (variant) => {
 
-                {/* Brand */}
+                        const hasSizes =
+                          Array.isArray(
+                            variant?.sizes
+                          ) &&
+                          variant.sizes.length >
+                            0;
 
-                <div className="flex justify-between border-b border-gray-100 pb-3">
+                        const variantStock =
+                          hasSizes
+                            ? variant.sizes.reduce(
+                                (
+                                  total,
+                                  size
+                                ) =>
+                                  total +
+                                  Number(
+                                    size?.stock ||
+                                      0
+                                  ),
+                                0
+                              )
+                            : Number(
+                                variant?.stock ||
+                                  0
+                              );
 
-                  <span className="text-gray-500">
+                        const isOutOfStock =
+                          variantStock <= 0;
 
-                    Brand
+                        const isSelected =
+                          selectedVariant?.id ===
+                          variant.id;
 
-                  </span>
+                        return (
+                          <button
+                            key={variant.id}
+                            type="button"
+                            disabled={
+                              isOutOfStock
+                            }
+                            onClick={() =>
+                              handleColorChange(
+                                variant
+                              )
+                            }
+                            aria-label={`Select ${variant.color} color`}
+                            aria-pressed={
+                              isSelected
+                            }
+                            className={`
+                              relative rounded-2xl
+                              border-2 p-3
+                              text-left
+                              transition-all
+                              duration-200
+                              ${
+                                isSelected
+                                  ? "border-black bg-gray-50 shadow-md"
+                                  : "border-gray-200 bg-white hover:border-gray-400 hover:shadow-sm"
+                              }
+                              ${
+                                isOutOfStock
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer"
+                              }
+                            `}
+                          >
 
-                  <span className="font-medium">
+                            {isSelected && (
+                              <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black text-white flex items-center justify-center z-10">
+                                <FiCheck className="text-sm" />
+                              </span>
+                            )}
 
-                    {product.brand}
+                            <div className="flex items-center gap-3">
 
-                  </span>
+                              <span
+                                className={`
+                                  w-11 h-11
+                                  rounded-full
+                                  flex-shrink-0
+                                  border-2
+                                  border-white
+                                  shadow-md
+                                  ring-1
+                                  ring-gray-200
+                                  ${
+                                    isSelected
+                                      ? "ring-2 ring-black ring-offset-2"
+                                      : ""
+                                  }
+                                `}
+                                style={{
+                                  backgroundColor:
+                                    variant.colorCode ||
+                                    "#e5e7eb",
+                                }}
+                              />
+
+                              <div className="min-w-0 pr-5">
+
+                                <p
+                                  className={`font-semibold text-sm truncate ${
+                                    isSelected
+                                      ? "text-black"
+                                      : "text-gray-800"
+                                  }`}
+                                >
+                                  {
+                                    variant.color
+                                  }
+                                </p>
+
+                                <p
+                                  className={`text-xs mt-1 ${
+                                    isOutOfStock
+                                      ? "text-red-500"
+                                      : "text-gray-500"
+                                  }`}
+                                >
+                                  {isOutOfStock
+                                    ? "Out of stock"
+                                    : "Available"}
+                                </p>
+
+                              </div>
+
+                            </div>
+
+                          </button>
+                        );
+                      }
+                    )}
+
+                  </div>
 
                 </div>
+              )}
 
+              {/* =================================================
+                  SIZE
+              ================================================= */}
 
+              {Array.isArray(
+                selectedVariant?.sizes
+              ) &&
+                selectedVariant.sizes.length >
+                  0 && (
+                  <div className="mt-8">
 
-                {/* Material */}
+                    <div className="flex items-center justify-between mb-4">
 
-                <div className="flex justify-between border-b border-gray-100 pb-3">
+                      <h2 className="text-base font-bold">
+                        Select Size
+                      </h2>
 
-                  <span className="text-gray-500">
+                      {selectedSize && (
+                        <span className="text-sm text-gray-500">
+                          Selected:{" "}
+                          <span className="font-semibold text-black">
+                            {selectedSize}
+                          </span>
+                        </span>
+                      )}
 
-                    Material
+                    </div>
 
-                  </span>
+                    <div className="flex flex-wrap gap-3">
 
-                  <span className="font-medium">
+                      {selectedVariant.sizes.map(
+                        (size) => {
 
-                    {product.material}
+                          const isSelected =
+                            String(
+                              selectedSize
+                            ) ===
+                            String(size.size);
 
-                  </span>
+                          const outOfStock =
+                            Number(
+                              size.stock || 0
+                            ) <= 0;
 
-                </div>
+                          return (
+                            <button
+                              key={size.size}
+                              type="button"
+                              disabled={
+                                outOfStock
+                              }
+                              onClick={() =>
+                                handleSizeChange(
+                                  size
+                                )
+                              }
+                              className={`
+                                min-w-[60px]
+                                px-4 py-3
+                                rounded-xl
+                                border-2
+                                text-sm
+                                font-semibold
+                                transition-all
+                                ${
+                                  isSelected
+                                    ? "bg-black text-white border-black shadow-md"
+                                    : "bg-white text-gray-800 border-gray-200 hover:border-black"
+                                }
+                                ${
+                                  outOfStock
+                                    ? "opacity-40 cursor-not-allowed line-through"
+                                    : ""
+                                }
+                              `}
+                            >
+                              {size.size}
+                            </button>
+                          );
+                        }
+                      )}
 
+                    </div>
 
+                  </div>
+                )}
 
-                {/* Category */}
+              {/* =================================================
+                  STOCK
+              ================================================= */}
 
-                <div className="flex justify-between border-b border-gray-100 pb-3">
+              <div className="mt-6">
 
-                  <span className="text-gray-500">
+                {currentStock > 0 ? (
+                  <div className="inline-flex items-center gap-2 text-sm font-medium text-green-700 bg-green-50 px-4 py-2 rounded-full">
 
-                    Category
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
 
-                  </span>
+                    {currentStock <= 5
+                      ? `Only ${currentStock} left in stock`
+                      : "In Stock"}
 
-                  <span className="font-medium">
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 text-sm font-medium text-red-700 bg-red-50 px-4 py-2 rounded-full">
 
-                    {product.category}
+                    <span className="w-2 h-2 bg-red-500 rounded-full" />
 
-                  </span>
+                    Out of Stock
 
-                </div>
+                  </div>
+                )}
 
+              </div>
 
+              {/* =================================================
+                  QUANTITY
+              ================================================= */}
 
-                {/* Availability */}
+              <div className="flex items-center gap-4 mt-7">
 
-                <div className="flex justify-between">
+                <span className="font-semibold text-sm">
+                  Quantity
+                </span>
 
-                  <span className="text-gray-500">
+                <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
 
-                    Availability
-
-                  </span>
-
-                  <span
-                    className={`font-medium ${
-                      product.stock
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
+                  <button
+                    type="button"
+                    onClick={
+                      decreaseQuantity
+                    }
+                    disabled={
+                      quantity <= 1
+                    }
+                    aria-label="Decrease quantity"
+                    className="w-11 h-11 flex items-center justify-center hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
                   >
+                    <FiMinus />
+                  </button>
 
-                    {product.stock
-                      ? "In Stock"
-                      : "Out of Stock"}
-
+                  <span className="w-12 text-center font-semibold">
+                    {quantity}
                   </span>
+
+                  <button
+                    type="button"
+                    onClick={
+                      increaseQuantity
+                    }
+                    disabled={
+                      currentStock <= 0 ||
+                      quantity >=
+                        currentStock
+                    }
+                    aria-label="Increase quantity"
+                    className="w-11 h-11 flex items-center justify-center hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <FiPlus />
+                  </button>
 
                 </div>
 
               </div>
 
+              {/* =================================================
+                  ACTION BUTTONS
+              ================================================= */}
+
+              <div className="grid grid-cols-[1fr_auto] gap-3 mt-7">
+
+                <button
+                  type="button"
+                  onClick={
+                    handleAddToCart
+                  }
+                  disabled={
+                    currentStock <= 0
+                  }
+                  className="cursor-pointer h-14 bg-black text-white rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-800 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  <FiShoppingBag className="text-lg" />
+                  Add to Cart
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setWishlist(
+                      (prev) => !prev
+                    )
+                  }
+                  aria-label="Add product to wishlist"
+                  aria-pressed={wishlist}
+                  className={`w-14 h-14 rounded-xl border flex items-center justify-center transition ${
+                    wishlist
+                      ? "bg-red-50 border-red-200 text-red-500"
+                      : "border-gray-300 text-gray-700 hover:border-black"
+                  }`}
+                >
+                  <FiHeart
+                    className={`text-xl ${
+                      wishlist
+                        ? "fill-current"
+                        : ""
+                    }`}
+                  />
+                </button>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                disabled={
+                  currentStock <= 0
+                }
+                className="cursor-pointer h-14 mt-3 w-full rounded-xl border-2 border-black bg-white text-black font-semibold hover:bg-black hover:text-white transition disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                Buy Now
+              </button>
+
+              {/* =================================================
+                  DELIVERY CARDS
+              ================================================= */}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-7">
+
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <FiTruck className="text-xl mb-2" />
+
+                  <p className="font-semibold text-sm">
+                    Fast Delivery
+                  </p>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    Quick doorstep delivery
+                  </p>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <FiPackage className="text-xl mb-2" />
+
+                  <p className="font-semibold text-sm">
+                    Secure Packaging
+                  </p>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    Carefully packed
+                  </p>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <FiShield className="text-xl mb-2" />
+
+                  <p className="font-semibold text-sm">
+                    Quality Assured
+                  </p>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    Quality checked
+                  </p>
+                </div>
+
+              </div>
+
             </div>
+          </div>
+
+        </section>
+
+        {/* ======================================================
+            PRODUCT DETAILS
+        ====================================================== */}
+
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+
+          <div className="border-t border-gray-200 pt-10">
+
+            {/* ==================================================
+                PRODUCT OVERVIEW
+                ALWAYS VISIBLE
+            ================================================== */}
+
+            <section className="mb-12">
+
+              <div className="flex items-center gap-3 mb-5">
+
+                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                  <FiInfo />
+                </div>
+
+                <h2 className="text-2xl font-bold">
+                  Product Overview
+                </h2>
+
+              </div>
+
+              <div className="bg-gray-50 rounded-2xl p-5 sm:p-7">
+
+                <p className="text-gray-700 leading-8 whitespace-pre-line">
+                  {product.details
+                    ?.overview ||
+                    product.description ||
+                    "Product overview information is not available."}
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* ==================================================
+                FEATURES
+                ALWAYS VISIBLE
+            ================================================== */}
+
+            {Array.isArray(
+              product.details?.features
+            ) &&
+              product.details.features
+                .length > 0 && (
+                <section className="mb-12">
+
+                  <div className="flex items-center gap-3 mb-5">
+
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                      <FiCheck />
+                    </div>
+
+                    <h2 className="text-2xl font-bold">
+                      প্রধান বৈশিষ্ট্য
+                    </h2>
+
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                    {product.details.features.map(
+                      (
+                        feature,
+                        index
+                      ) => (
+                        <div
+                          key={index}
+                          className="group border border-gray-200 rounded-2xl p-5 hover:border-gray-400 hover:shadow-sm transition"
+                        >
+
+                          <div className="flex items-start gap-3">
+
+                            <div className="w-8 h-8 flex-shrink-0 rounded-full bg-black text-white flex items-center justify-center">
+                              <FiCheck className="text-sm" />
+                            </div>
+
+                            <p className="text-gray-700 leading-6">
+                              {feature}
+                            </p>
+
+                          </div>
+
+                        </div>
+                      )
+                    )}
+
+                  </div>
+
+                </section>
+              )}
+
+            {/* ==================================================
+                SPECIFICATIONS
+                ALWAYS VISIBLE
+            ================================================== */}
+
+            {product.details
+              ?.specifications &&
+              Object.keys(
+                product.details
+                  .specifications
+              ).length > 0 && (
+                <section className="mb-12">
+
+                  <div className="flex items-center gap-3 mb-5">
+
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                      <FiList />
+                    </div>
+
+                    <h2 className="text-2xl font-bold">
+                      Specifications
+                    </h2>
+
+                  </div>
+
+                  <div className="border border-gray-200 rounded-2xl overflow-hidden">
+
+                    <div className="overflow-x-auto">
+
+                      <table className="w-full text-sm">
+
+                        <tbody>
+
+                          {Object.entries(
+                            product.details
+                              .specifications
+                          ).map(
+                            (
+                              [
+                                key,
+                                value,
+                              ],
+                              index
+                            ) => (
+                              <tr
+                                key={key}
+                                className={
+                                  index %
+                                    2 ===
+                                  0
+                                    ? "bg-gray-50"
+                                    : "bg-white"
+                                }
+                              >
+
+                                <td className="px-5 py-4 font-semibold text-gray-800 w-1/3 border-r border-gray-200">
+                                  {key}
+                                </td>
+
+                                <td className="px-5 py-4 text-gray-600">
+                                  {String(
+                                    value
+                                  )}
+                                </td>
+
+                              </tr>
+                            )
+                          )}
+
+                        </tbody>
+
+                      </table>
+
+                    </div>
+
+                  </div>
+
+                </section>
+              )}
+
+            {/* ==================================================
+                HOW TO USE
+            ================================================== */}
+
+            {product.details?.howToUse && (
+              <div className="border-t border-gray-200">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleSection(
+                      "howToUse"
+                    )
+                  }
+                  className="w-full py-5 flex items-center justify-between text-left"
+                >
+
+                  <div className="flex items-center gap-3">
+
+                    <FiTool className="text-xl" />
+
+                    <h2 className="text-lg font-bold">
+                      How To Use
+                    </h2>
+
+                  </div>
+
+                  {openSection ===
+                  "howToUse" ? (
+                    <FiChevronUp />
+                  ) : (
+                    <FiChevronDown />
+                  )}
+
+                </button>
+
+                {openSection ===
+                  "howToUse" && (
+                  <div className="pb-6 text-gray-600 leading-7 whitespace-pre-line">
+                    {
+                      product.details
+                        .howToUse
+                    }
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* ==================================================
+                CARE INSTRUCTIONS
+            ================================================== */}
+
+            {product.details
+              ?.careInstructions && (
+              <div className="border-t border-gray-200">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleSection(
+                      "care"
+                    )
+                  }
+                  className="w-full py-5 flex items-center justify-between text-left"
+                >
+
+                  <div className="flex items-center gap-3">
+
+                    <FiTool className="text-xl" />
+
+                    <h2 className="text-lg font-bold">
+                      Care Instructions
+                    </h2>
+
+                  </div>
+
+                  {openSection ===
+                  "care" ? (
+                    <FiChevronUp />
+                  ) : (
+                    <FiChevronDown />
+                  )}
+
+                </button>
+
+                {openSection ===
+                  "care" && (
+                  <div className="pb-6 text-gray-600 leading-7 whitespace-pre-line">
+                    {
+                      product.details
+                        .careInstructions
+                    }
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* ==================================================
+                WHAT'S INCLUDED
+            ================================================== */}
+
+            {product.details
+              ?.whatsIncluded && (
+              <div className="border-t border-gray-200">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleSection(
+                      "included"
+                    )
+                  }
+                  className="w-full py-5 flex items-center justify-between text-left"
+                >
+
+                  <div className="flex items-center gap-3">
+
+                    <FiPackage className="text-xl" />
+
+                    <h2 className="text-lg font-bold">
+                      What's Included
+                    </h2>
+
+                  </div>
+
+                  {openSection ===
+                  "included" ? (
+                    <FiChevronUp />
+                  ) : (
+                    <FiChevronDown />
+                  )}
+
+                </button>
+
+                {openSection ===
+                  "included" && (
+                  <div className="pb-6">
+
+                    {Array.isArray(
+                      product.details
+                        .whatsIncluded
+                    ) ? (
+                      <ul className="space-y-3">
+
+                        {product.details.whatsIncluded.map(
+                          (
+                            item,
+                            index
+                          ) => (
+                            <li
+                              key={
+                                index
+                              }
+                              className="flex items-center gap-3 text-gray-600"
+                            >
+                              <FiCheck className="text-green-600" />
+
+                              {item}
+                            </li>
+                          )
+                        )}
+
+                      </ul>
+                    ) : (
+                      <p className="text-gray-600">
+                        {
+                          product
+                            .details
+                            .whatsIncluded
+                        }
+                      </p>
+                    )}
+
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* ==================================================
+                DELIVERY
+            ================================================== */}
+
+            {product.details
+              ?.deliveryInfo && (
+              <div className="border-t border-gray-200">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleSection(
+                      "delivery"
+                    )
+                  }
+                  className="w-full py-5 flex items-center justify-between text-left"
+                >
+
+                  <div className="flex items-center gap-3">
+
+                    <FiTruck className="text-xl" />
+
+                    <h2 className="text-lg font-bold">
+                      Delivery Information
+                    </h2>
+
+                  </div>
+
+                  {openSection ===
+                  "delivery" ? (
+                    <FiChevronUp />
+                  ) : (
+                    <FiChevronDown />
+                  )}
+
+                </button>
+
+                {openSection ===
+                  "delivery" && (
+                  <div className="pb-6">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                      {product.details
+                        .deliveryInfo
+                        .insideDhaka && (
+                        <div className="bg-gray-50 rounded-xl p-5">
+
+                          <p className="font-semibold mb-2">
+                            Inside Dhaka
+                          </p>
+
+                          <p className="text-gray-600">
+                            {
+                              product
+                                .details
+                                .deliveryInfo
+                                .insideDhaka
+                            }
+                          </p>
+
+                        </div>
+                      )}
+
+                      {product.details
+                        .deliveryInfo
+                        .outsideDhaka && (
+                        <div className="bg-gray-50 rounded-xl p-5">
+
+                          <p className="font-semibold mb-2">
+                            Outside Dhaka
+                          </p>
+
+                          <p className="text-gray-600">
+                            {
+                              product
+                                .details
+                                .deliveryInfo
+                                .outsideDhaka
+                            }
+                          </p>
+
+                        </div>
+                      )}
+
+                    </div>
+
+                    {product.details
+                      .deliveryInfo
+                      .deliveryCharge && (
+                      <div className="mt-4 text-gray-600">
+
+                        <strong>
+                          Delivery Charge:
+                        </strong>{" "}
+
+                        {
+                          product
+                            .details
+                            .deliveryInfo
+                            .deliveryCharge
+                        }
+
+                      </div>
+                    )}
+
+                    {product.details
+                      .deliveryInfo
+                      .note && (
+                      <p className="mt-3 text-sm text-gray-500">
+                        {
+                          product
+                            .details
+                            .deliveryInfo
+                            .note
+                        }
+                      </p>
+                    )}
+
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* ==================================================
+                RETURN POLICY
+            ================================================== */}
+
+            {product.details
+              ?.returnPolicy && (
+              <div className="border-t border-gray-200">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleSection(
+                      "return"
+                    )
+                  }
+                  className="w-full py-5 flex items-center justify-between text-left"
+                >
+
+                  <div className="flex items-center gap-3">
+
+                    <FiRotateCcw className="text-xl" />
+
+                    <h2 className="text-lg font-bold">
+                      Return Policy
+                    </h2>
+
+                  </div>
+
+                  {openSection ===
+                  "return" ? (
+                    <FiChevronUp />
+                  ) : (
+                    <FiChevronDown />
+                  )}
+
+                </button>
+
+                {openSection ===
+                  "return" && (
+                  <div className="pb-6 text-gray-600 leading-7 whitespace-pre-line">
+                    {
+                      product.details
+                        .returnPolicy
+                    }
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* ==================================================
+                WARRANTY
+            ================================================== */}
+
+            {product.details?.warranty && (
+              <div className="border-t border-gray-200">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleSection(
+                      "warranty"
+                    )
+                  }
+                  className="w-full py-5 flex items-center justify-between text-left"
+                >
+
+                  <div className="flex items-center gap-3">
+
+                    <FiShield className="text-xl" />
+
+                    <h2 className="text-lg font-bold">
+                      Warranty
+                    </h2>
+
+                  </div>
+
+                  {openSection ===
+                  "warranty" ? (
+                    <FiChevronUp />
+                  ) : (
+                    <FiChevronDown />
+                  )}
+
+                </button>
+
+                {openSection ===
+                  "warranty" && (
+                  <div className="pb-6 text-gray-600 leading-7 whitespace-pre-line">
+                    {
+                      product.details
+                        .warranty
+                    }
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* ==================================================
+                TAGS
+            ================================================== */}
+
+            {Array.isArray(
+              product.tags
+            ) &&
+              product.tags.length > 0 && (
+                <div className="border-t border-gray-200 pt-6">
+
+                  <div className="flex items-center gap-2 flex-wrap">
+
+                    <span className="font-semibold text-sm">
+                      Tags:
+                    </span>
+
+                    {product.tags.map(
+                      (tag) => (
+                        <span
+                          key={tag}
+                          className="px-3 py-1.5 rounded-full bg-gray-100 text-xs text-gray-600"
+                        >
+                          #{tag}
+                        </span>
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+              )}
 
           </div>
 
-        </div>
+        </section>
 
-      </div>
-
-    </section>
+      </main>
+    </>
   );
 };
 
-
 export default ProductDetails;
-

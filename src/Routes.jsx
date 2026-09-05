@@ -1,76 +1,68 @@
 import { createBrowserRouter } from "react-router-dom";
-import Root from './Root';
+
+import Root from "./Root";
 import App from "./App";
 import ProductDetails from "./components/ProductDetails/ProductDetails";
 import About from "./components/About/About";
 import Contact from "./components/Contact/Contact";
 import Services from "./components/Services/Services";
 import CartPage from "./components/CartPage/CartPage";
-import Checkout from './components/CheckOut/CheckOut';
-import SideCart from './components/SideCart/SideCart';
+import Checkout from "./components/CheckOut/CheckOut";
+import SideCart from "./components/SideCart/SideCart";
 import MakeupOne from "./components/LandingPage/MakeupOne";
 
 const router = createBrowserRouter([
-    {
-        path: "/",
-        element: <Root/>,
-            children:[
-            {
-                path: "/",
-            element: <App></App>
-                },
+  {
+    path: "/",
+    element: <Root />,
 
-            {
-                path: "/ProductDetails/:productId",
-                loader: ({params}) => {
-                    return fetch('/ProductData.json')
-                        .then(response => response.json())     
-                        .then(Data => (
-                            Data.find(b => parseInt(b.id) === parseInt(params.productId))
-            ))
-                },
-            Component: ProductDetails,
-            },
+    children: [
+      {
+        index: true,
+        element: <App />,
+      },
 
-            {
-                path: "/About",
-            element: <About></About>
-                },
+      {
+        path: "/ProductDetails/:productId",
+        element: <ProductDetails />,
+      },
 
-                {
-                path: "/Contact",
-            element: <Contact></Contact>
-                },
+      {
+        path: "/About",
+        element: <About />,
+      },
 
-                {
-                path: "/Services",
-            element: <Services></Services>
-                },
+      {
+        path: "/Contact",
+        element: <Contact />,
+      },
 
-                {
-                path: "/CartPage",
-            element: <CartPage></CartPage>
-                },
+      {
+        path: "/Services",
+        element: <Services />,
+      },
 
-                {
-                path: "/Checkout",
-            element: <Checkout></Checkout>
-                },
+      {
+        path: "/CartPage",
+        element: <CartPage />,
+      },
 
-                {
-                path: "/SideCart",
-            element: <SideCart></SideCart>
-                },
+      {
+        path: "/Checkout",
+        element: <Checkout />,
+      },
 
-                {
-             path:"/MakeupOne/:id",
-            element: <MakeupOne />
+      {
+        path: "/SideCart",
+        element: <SideCart />,
+      },
 
-                },
-
-            
-            ]
-    }
-            ])
+      {
+        path: "/MakeupOne/:id",
+        element: <MakeupOne />,
+      },
+    ],
+  },
+]);
 
 export default router;
