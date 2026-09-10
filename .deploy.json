@@ -1,0 +1,8 @@
+{
+    "DEPLOYPATH": "/home/spriengg/public_html",
+    "task": [
+        "index.html",
+        "assets",
+        "*"
+    ]
+}
